@@ -5,3 +5,7 @@ get_factors_stars <- function(dimensions, curvilinear = FALSE) {
     invisible(.Call('_fstars_get_factors_stars', PACKAGE = 'fstars', dimensions, curvilinear))
 }
 
+test_proj <- function() {
+    .Call('_fstars_test_proj', PACKAGE = 'fstars')
+}
+

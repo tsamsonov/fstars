@@ -7,3 +7,11 @@
 get_factors <- function(s) {
   get_factors_stars(attr(s, "dimensions"))
 }
+
+#' Tests external proj functionality
+#'
+#' @return nothing
+#' @export
+test_rproj <- function() {
+  test_proj()
+}
