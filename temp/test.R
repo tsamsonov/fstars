@@ -10,4 +10,3 @@ attr(x, "dimensions")[[1]][['refsys']][['wkt']]
 
 get_factors(x)
 test_rproj()
-
