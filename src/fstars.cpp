@@ -22,20 +22,18 @@ void get_factors_stars(Rcpp::List dimensions, bool curvilinear = false) {
 
 // [[Rcpp::export]]
 int test_proj() {
-   PJ_CONTEXT *C;
-   PJ *P, *P2;
+   PJ_CONTEXT *C = PJ_DEFAULT_CTX;
    PJ_COORD a, b, c, d;
 
    /* or you may set C=PJ_DEFAULT_CTX if you are sure you will     */
    /* use PJ objects from only one thread                          */
    // C = proj_context_create();
 
-   C = PJ_DEFAULT_CTX;
-
    // proj_context_use_proj4_init_rules(PJ_DEFAULT_CTX, 1);
 
-   const char* prj = "+proj=sinu";
-   PJ* crs = proj_create(C, "+proj=sinu +type=crs");
+   const char* prj = "+proj=moll";
+   PJ* crs = proj_create(C, (string(prj) + " +type=crs").c_str());
+   PJ* P = proj_create(C, prj);
 
    auto ell = proj_get_ellipsoid(C, crs);
 
@@ -45,29 +43,25 @@ int test_proj() {
    double out_inv_flattening;
 
    proj_ellipsoid_get_parameters(C, ell,
-                             &out_semi_major_metre,
-                             &out_semi_minor_metre,
-                             &out_is_semi_minor_computed,
-                             &out_inv_flattening);
-   cout << "ELLIPSOID:" << endl;
-   cout << "out_semi_major_metre: "  << out_semi_major_metre << endl;
-   cout << "out_semi_minor_metre: " << out_semi_minor_metre << endl;
-   cout << "out_is_semi_minor_computed: " << out_is_semi_minor_computed << endl;
-   cout << "out_inv_flattening: " << out_inv_flattening << endl << endl;
-
-   P = proj_normalize_for_visualization(C, proj_create_crs_to_crs(C, "EPSG:4326", prj, NULL));
-   P2 = proj_create_crs_to_crs(C, "EPSG:4326", prj, NULL);
-
-  // if (0==P) {
-  //   fprintf(stderr, "Oops\n");
-  //   return 1;
-  // }
+                                 &out_semi_major_metre,
+                                 &out_semi_minor_metre,
+                                 &out_is_semi_minor_computed,
+                                 &out_inv_flattening);
+                                 cout << "ELLIPSOID:" << endl;
+                                 cout << "out_semi_major_metre: "  << out_semi_major_metre << endl;
+                                 cout << "out_semi_minor_metre: " << out_semi_minor_metre << endl;
+                                 cout << "out_is_semi_minor_computed: " << out_is_semi_minor_computed << endl;
+                                 cout << "out_inv_flattening: " << out_inv_flattening << endl << endl;
 
    cout << "COORDINATES:" << endl;
+   double lat = 60, lon = 100;
+
    /* a coordinate union representing Copenhagen: 55d N, 12d E    */
    /* Given that we have used proj_normalize_for_visualization(), the order of
    /* coordinates is longitude, latitude, and values are expressed in degrees. */
-   a = proj_coord(160, 60, 0, 0);
+
+   a.lp.lam = proj_torad(lon);
+   a.lp.phi = proj_torad(lat);
 
    /* transform to UTM zone 32, then back to geographical */
    b = proj_trans(P, PJ_FWD, a);
@@ -76,12 +70,7 @@ int test_proj() {
    c = proj_trans(P, PJ_INV, b);
    cout << "longitude: " << c.lp.lam << ", latitude: " << c.lp.phi << endl << endl;
 
-   // d = proj_coord(160, 60, 0, 0);
-
-   d.lp.lam = 3;
-   d.lp.phi = 1.5;
-
-   PJ_FACTORS pf = proj_factors(P, d);
+   PJ_FACTORS pf = proj_factors(P, a);
 
    cout << "PROJECTION FACTORS:" << endl;
    cout << "meridional_scale: "  << pf.meridional_scale << endl;
@@ -98,7 +87,7 @@ int test_proj() {
    cout << "dx_dlam: " << pf.dx_dlam << endl;
    cout << "dx_dphi: " << pf.dx_dphi << endl;
    cout << "dy_dlam: " << pf.dy_dlam << endl;
-   cout << "dy_dphi: " << pf.dy_dphi << endl;
+   cout << "dy_dphi: " << pf.dy_dphi << endl << endl;
 
    /* Clean up */
    proj_destroy (P);
