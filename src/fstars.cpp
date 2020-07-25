@@ -6,18 +6,89 @@
 using namespace std;
 
 // [[Rcpp::export]]
-void get_factors_stars(Rcpp::List dimensions, bool curvilinear = false) {
-   Rcpp::List dim = dimensions[0];
-   int from = dim["from"];
-   int to = dim["to"];
-   double offset = dim["offset"];
-   double delta = dim["delta"];
-   std::string wkt = Rcpp::as<Rcpp::List>(dim["refsys"])["wkt"];
+Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvilinear = false) {
 
-   std::cout << from << std::endl;
-   std::cout << to << std::endl;
-   std::cout << offset << std::endl;
-   std::cout << delta << std::endl;
+   Rcpp::List idim = dimensions[1];
+   int ifrom = idim["from"];
+   int ito = idim["to"];
+   double ioffset = idim["offset"];
+   double idelta = idim["delta"];
+   int ni = ito - ifrom + 1;
+
+   Rcpp::List jdim = dimensions[0];
+   int jfrom = jdim["from"];
+   int jto = jdim["to"];
+   double joffset = jdim["offset"];
+   double jdelta = jdim["delta"];
+   int nj = jto - jfrom + 1;
+
+   int n = ni * nj;
+
+   // const char *prj = (Rcpp::as<string>(Rcpp::as<Rcpp::List>(idim["refsys"])["wkt"])).c_str();
+
+   const char *prj = CRS.c_str();
+   cout << prj << endl;
+
+   PJ_CONTEXT *C = PJ_DEFAULT_CTX;
+   PJ* P = proj_create(C, prj);
+
+   PJ_FACTORS pf;
+   PJ_COORD pt, gpt;
+
+   vector<double> meridional_scale(n, 0);
+   vector<double> parallel_scale(n, 0);
+   vector<double> areal_scale(n, 0);
+   vector<double> angular_distortion(n, 0);
+   vector<double> meridian_parallel_angle(n, 0);
+   vector<double> meridian_convergence(n, 0);
+   vector<double> tissot_semimajor(n, 0);
+   vector<double> tissot_semiminor(n, 0);
+   vector<double> dx_dlam(n, 0);
+   vector<double> dx_dphi(n, 0);
+   vector<double> dy_dlam(n, 0);
+   vector<double> dy_dphi(n, 0);
+
+   int idx = 0;
+
+   for (auto i = 0; i < ni; ++i) {
+      for (auto j = 0; j < nj; ++j) {
+         idx = ni * i + j;
+         pt.enu.n = ioffset + i * idelta;
+         pt.enu.e = joffset + j * jdelta;
+         gpt = proj_trans(P, PJ_INV, pt);
+         pf = proj_factors(P, gpt);
+
+         meridional_scale[idx] = pf.meridional_scale;
+         parallel_scale[idx] = pf.parallel_scale;
+         areal_scale[idx] = pf.areal_scale;
+         angular_distortion[idx] = pf.angular_distortion;
+         meridian_parallel_angle[idx] = pf.meridian_parallel_angle;
+         meridian_convergence[idx] = pf.meridian_convergence;
+         tissot_semimajor[idx] = pf.tissot_semimajor;
+         tissot_semiminor[idx] = pf.tissot_semiminor;
+         dx_dlam[idx] = pf.dx_dlam;
+         dx_dphi[idx] = pf.dx_dphi;
+         dy_dlam[idx] = pf.dy_dlam;
+         dy_dphi[idx] = pf.dy_dphi;
+      }
+   }
+
+   cout << "easting: " << pt.enu.e << ", northing: " << pt.enu.n << endl;
+   cout << "longitude: " << gpt.lp.lam << ", latitude: " << gpt.lp.phi << endl << endl;
+
+   return Rcpp::List::create(Rcpp::Named("meridional_scale") = meridional_scale,
+                             Rcpp::Named("parallel_scale") = parallel_scale,
+                             Rcpp::Named("areal_scale") = areal_scale,
+                             Rcpp::Named("angular_distortion") = angular_distortion,
+                             Rcpp::Named("meridian_parallel_angle") = meridian_parallel_angle,
+                             Rcpp::Named("meridian_convergence") = meridian_convergence,
+                             Rcpp::Named("tissot_semimajor") = tissot_semimajor,
+                             Rcpp::Named("tissot_semiminor") = tissot_semiminor,
+                             Rcpp::Named("dx_dlam") = dx_dlam,
+                             Rcpp::Named("dx_dphi") = dx_dphi,
+                             Rcpp::Named("dy_dlam") = dy_dlam,
+                             Rcpp::Named("dy_dphi") = dy_dphi);
+
 }
 
 // [[Rcpp::export]]
@@ -71,6 +142,8 @@ int test_proj() {
    cout << "longitude: " << c.lp.lam << ", latitude: " << c.lp.phi << endl << endl;
 
    PJ_FACTORS pf = proj_factors(P, a);
+
+
 
    cout << "PROJECTION FACTORS:" << endl;
    cout << "meridional_scale: "  << pf.meridional_scale << endl;

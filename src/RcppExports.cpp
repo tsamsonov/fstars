@@ -6,14 +6,16 @@
 using namespace Rcpp;
 
 // get_factors_stars
-void get_factors_stars(Rcpp::List dimensions, bool curvilinear);
-RcppExport SEXP _fstars_get_factors_stars(SEXP dimensionsSEXP, SEXP curvilinearSEXP) {
+Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvilinear);
+RcppExport SEXP _fstars_get_factors_stars(SEXP dimensionsSEXP, SEXP CRSSEXP, SEXP curvilinearSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type dimensions(dimensionsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type CRS(CRSSEXP);
     Rcpp::traits::input_parameter< bool >::type curvilinear(curvilinearSEXP);
-    get_factors_stars(dimensions, curvilinear);
-    return R_NilValue;
+    rcpp_result_gen = Rcpp::wrap(get_factors_stars(dimensions, CRS, curvilinear));
+    return rcpp_result_gen;
 END_RCPP
 }
 // test_proj
@@ -28,7 +30,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fstars_get_factors_stars", (DL_FUNC) &_fstars_get_factors_stars, 2},
+    {"_fstars_get_factors_stars", (DL_FUNC) &_fstars_get_factors_stars, 3},
     {"_fstars_test_proj", (DL_FUNC) &_fstars_test_proj, 0},
     {NULL, NULL, 0}
 };
