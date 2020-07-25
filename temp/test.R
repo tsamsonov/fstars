@@ -7,8 +7,8 @@ data(land, package = 'tmap')
 box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
 
 landp = land %>%
-  st_crop(box) %>%
-  st_transform(crs = '+proj=eck3')
+  # st_crop(box) %>%
+  st_warp(crs = '+proj=eqearth')
 
 fct = get_factors(landp)
 
@@ -23,18 +23,41 @@ ggplot() +
   coord_sf(crs = st_crs(landp)) +
   theme(legend.position = 'bottom')
 
-var = 'areal_scale'
-brks = classIntervals(sample(fct[[var]], 10000), n = 10, style = 'fisher')$brks
-
-cont = st_contour(
-  fct[var],
-  na.rm = TRUE,
-  contour_lines = TRUE,
-  breaks = brks
+vars = c(
+  # "meridional_scale",
+  # "parallel_scale",
+  # "areal_scale",
+  # "angular_distortion",
+  # "meridian_parallel_angle",
+  # "meridian_convergence",
+  # "parallel_convergence",
+  # "tissot_semimajor",
+  # "tissot_semiminor",
+  "tissot_orientation"
+  # "dx_dlam",
+  # "dx_dphi",
+  # "dy_dlam",
+  # "dy_dphi"
 )
 
-ggplot() +
-  geom_stars(data = cut(fct[var], breaks = brks)) +
-  geom_sf(data = cont)
-  coord_sf(crs = st_crs(fct))
+
+for (var in vars) {
+  brks = unique(classIntervals(fct[[var]], n = 10, style = 'fisher')$brks)
+
+  cont = st_contour(
+    fct[var],
+    na.rm = TRUE,
+    contour_lines = TRUE,
+    breaks = brks
+  )
+
+  g = ggplot() +
+    geom_stars(data = cut(fct[var], breaks = brks)) +
+    geom_sf(data = cont) +
+    coord_sf(crs = st_crs(fct)) +
+    ggtitle(var)
+
+  print(g)
+}
+
 

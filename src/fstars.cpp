@@ -24,10 +24,7 @@ Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvil
 
    int n = ni * nj;
 
-   // const char *prj = (Rcpp::as<string>(Rcpp::as<Rcpp::List>(idim["refsys"])["wkt"])).c_str();
-
    const char *prj = CRS.c_str();
-   cout << prj << endl;
 
    PJ_CONTEXT *C = PJ_DEFAULT_CTX;
    PJ* P = proj_create(C, prj);
@@ -41,8 +38,10 @@ Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvil
    vector<double> angular_distortion(n, 0);
    vector<double> meridian_parallel_angle(n, 0);
    vector<double> meridian_convergence(n, 0);
+   vector<double> parallel_convergence(n, 0);
    vector<double> tissot_semimajor(n, 0);
    vector<double> tissot_semiminor(n, 0);
+   vector<double> tissot_orientation(n, 0);
    vector<double> dx_dlam(n, 0);
    vector<double> dx_dphi(n, 0);
    vector<double> dy_dlam(n, 0);
@@ -50,9 +49,11 @@ Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvil
 
    int idx = 0;
 
+   double sintheta, tsin, tcos, dir, a2, b2, k2, h2, dx, dy, theta;
+
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
-         idx = ni * i + j;
+         idx = nj * i + j;
          pt.enu.n = ioffset + i * idelta;
          pt.enu.e = joffset + j * jdelta;
          gpt = proj_trans(P, PJ_INV, pt);
@@ -62,19 +63,37 @@ Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvil
          parallel_scale[idx] = pf.parallel_scale;
          areal_scale[idx] = pf.areal_scale;
          angular_distortion[idx] = pf.angular_distortion;
-         meridian_parallel_angle[idx] = pf.meridian_parallel_angle;
          meridian_convergence[idx] = pf.meridian_convergence;
+         meridian_parallel_angle[idx] = pf.meridian_parallel_angle;
          tissot_semimajor[idx] = pf.tissot_semimajor;
          tissot_semiminor[idx] = pf.tissot_semiminor;
          dx_dlam[idx] = pf.dx_dlam;
          dx_dphi[idx] = pf.dx_dphi;
          dy_dlam[idx] = pf.dy_dlam;
          dy_dphi[idx] = pf.dy_dphi;
+
+         parallel_convergence[idx] = atan2(pf.dy_dlam, pf.dx_dlam);
+
+         // Tissot ellipse orientation
+
+         // theta = (pf.meridian_convergence > 0) ? M_PI_2 + pf.meridian_convergence : pf.meridian_parallel_angle;
+         tsin = sin(2.0 * pf.meridian_parallel_angle);
+         tcos = cos(2.0 * pf.meridian_parallel_angle);
+         k2 =  pf.parallel_scale * pf.parallel_scale;
+         h2 =  pf.meridional_scale * pf.meridional_scale;
+         // a2 = pf.tissot_semimajor * pf.tissot_semimajor;
+         // b2 = pf.tissot_semiminor * pf.tissot_semiminor;
+         dx = h2 * tsin;
+         dy = k2 + h2 * tcos;
+
+         dir =  0.5 * atan2(dx, dy);
+         tissot_orientation[idx] = (pf.meridian_convergence > 0) ? 0.5 * atan2(dx, dy) : -0.5 * atan2(dx, dy);
+
+         // tissot_orientation[idx] = sqrt((a2 - h2) / (h2 - b2)) * pf.tissot_semiminor / pf.tissot_semimajor;
+
+
       }
    }
-
-   cout << "easting: " << pt.enu.e << ", northing: " << pt.enu.n << endl;
-   cout << "longitude: " << gpt.lp.lam << ", latitude: " << gpt.lp.phi << endl << endl;
 
    return Rcpp::List::create(Rcpp::Named("meridional_scale") = meridional_scale,
                              Rcpp::Named("parallel_scale") = parallel_scale,
@@ -82,8 +101,10 @@ Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvil
                              Rcpp::Named("angular_distortion") = angular_distortion,
                              Rcpp::Named("meridian_parallel_angle") = meridian_parallel_angle,
                              Rcpp::Named("meridian_convergence") = meridian_convergence,
+                             Rcpp::Named("parallel_convergence") = parallel_convergence,
                              Rcpp::Named("tissot_semimajor") = tissot_semimajor,
                              Rcpp::Named("tissot_semiminor") = tissot_semiminor,
+                             Rcpp::Named("tissot_orientation") = tissot_orientation,
                              Rcpp::Named("dx_dlam") = dx_dlam,
                              Rcpp::Named("dx_dphi") = dx_dphi,
                              Rcpp::Named("dy_dlam") = dy_dlam,
