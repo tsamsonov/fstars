@@ -23,6 +23,26 @@ get_factors <- function(s) {
            dy_dphi = pf[['dy_dphi']])
 }
 
+#' Filter stars object with selected kernel
+#'
+#' @param s a raster stars object
+#' @param kernel string (name of the filter), matrix (with values)
+#' @param size
+#'
+#' @return matrix
+#' @export
+#'
+#' @examples
+st_filter <- function(s, kernel = 'mean', size = c(3, 3), fun = NULL) {
+  krnl = matrix(rep(1/9, 9), nrow = 3)
+  res = filter_matrix(s[[1]], krnl) %>%
+    st_as_stars()
+  attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
+  attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
+  set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
+  return(res)
+}
+
 #' Tests external proj functionality
 #'
 #' @return nothing

@@ -5,6 +5,18 @@
 
 using namespace Rcpp;
 
+// filter_matrix
+Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix matrix, Rcpp::NumericMatrix kernel);
+RcppExport SEXP _fstars_filter_matrix(SEXP matrixSEXP, SEXP kernelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type kernel(kernelSEXP);
+    rcpp_result_gen = Rcpp::wrap(filter_matrix(matrix, kernel));
+    return rcpp_result_gen;
+END_RCPP
+}
 // get_factors_stars
 Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvilinear);
 RcppExport SEXP _fstars_get_factors_stars(SEXP dimensionsSEXP, SEXP CRSSEXP, SEXP curvilinearSEXP) {
@@ -30,6 +42,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_fstars_filter_matrix", (DL_FUNC) &_fstars_filter_matrix, 2},
     {"_fstars_get_factors_stars", (DL_FUNC) &_fstars_get_factors_stars, 3},
     {"_fstars_test_proj", (DL_FUNC) &_fstars_test_proj, 0},
     {NULL, NULL, 0}

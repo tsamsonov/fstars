@@ -7,8 +7,8 @@ data(land, package = 'tmap')
 box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
 
 landp = land %>%
-  # st_crop(box) %>%
-  st_warp(crs = '+proj=eqearth')
+  st_crop(box) %>%
+  st_warp(crs = '+proj=eck3')
 
 fct = get_factors(landp)
 
@@ -29,11 +29,11 @@ vars = c(
   # "areal_scale",
   # "angular_distortion",
   # "meridian_parallel_angle",
-  # "meridian_convergence",
+  "meridian_convergence"
   # "parallel_convergence",
   # "tissot_semimajor",
   # "tissot_semiminor",
-  "tissot_orientation"
+  # "tissot_orientation"
   # "dx_dlam",
   # "dx_dphi",
   # "dy_dlam",
@@ -60,4 +60,8 @@ for (var in vars) {
   print(g)
 }
 
-
+f = st_filter(landp['elevation'])
+f2 = st_filter(f)
+plot(landp['elevation'])
+plot(f)
+plot(f2)

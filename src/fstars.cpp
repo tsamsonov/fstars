@@ -6,6 +6,67 @@
 using namespace std;
 
 // [[Rcpp::export]]
+Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
+                                  Rcpp::NumericMatrix  kernel) {
+   int nk = kernel.nrow();
+   int nl = kernel.ncol();
+
+   int ni = matrix.nrow() - nk + 1;
+   int nj = matrix.ncol() - nl + 1;
+
+   Rcpp::NumericMatrix ishift(nk, nl);
+   Rcpp::NumericMatrix jshift(nk, nl);
+
+   int istart = nk / 2;
+   int jstart = nl / 2;
+
+   int di = -istart;
+   int dj;
+
+   double ksum = 0;
+
+   for (auto k = 0; k < nk; ++k) {
+      di += k;
+      dj = -jstart;
+      for (auto l = 0; l < nl; ++l) {
+         dj += l;
+         ishift(k, l) = di;
+         jshift(k, l) = dj;
+
+         ksum += kernel(k, l);
+      }
+   }
+
+   Rcpp::NumericMatrix res(ni, nj);
+   double val, penalty;
+
+   for (auto i = 0; i < ni; ++i) {
+      for (auto j = 0; j < nj; ++j) {
+         if (matrix(i + istart, j + jstart) == NA_REAL) {
+            cout << 'YeAh!' << endl;
+            res(i, j) = NA_REAL;
+         } else {
+            res(i, j) = 0;
+            penalty = 0;
+            for (auto k = 0; k < nk; ++k) {
+               for (auto l = 0; l < nl; ++l) {
+                  val = matrix(i + istart + ishift(k, l), j + jstart + jshift(k, l));
+                  if (val == NA_REAL) {
+                     penalty += kernel(k, l);
+                  } else {
+                     res(i, j) += val * kernel(k, l);
+                  }
+               }
+            }
+            res(i, j) = res(i, j) / (ksum - penalty);
+         }
+      }
+   }
+
+   return res;
+}
+
+// [[Rcpp::export]]
 Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvilinear = false) {
 
    Rcpp::List idim = dimensions[1];
