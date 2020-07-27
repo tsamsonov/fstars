@@ -40,10 +40,12 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
    Rcpp::NumericMatrix res(ni, nj);
    double val, penalty;
 
+   cout << to_string(NA_REAL) << endl;
+   cout << to_string(matrix(0,0)) << endl;
+
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
-         if (matrix(i + istart, j + jstart) == NA_REAL) {
-            cout << 'YeAh!' << endl;
+         if (to_string(matrix(i + istart, j + jstart)) == "nan") {
             res(i, j) = NA_REAL;
          } else {
             res(i, j) = 0;
@@ -51,7 +53,7 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
             for (auto k = 0; k < nk; ++k) {
                for (auto l = 0; l < nl; ++l) {
                   val = matrix(i + istart + ishift(k, l), j + jstart + jshift(k, l));
-                  if (val == NA_REAL) {
+                  if (to_string(val) == "nan") {
                      penalty += kernel(k, l);
                   } else {
                      res(i, j) += val * kernel(k, l);

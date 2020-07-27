@@ -60,8 +60,8 @@ for (var in vars) {
   print(g)
 }
 
-f = st_filter(landp['elevation'])
-f2 = st_filter(f)
+f = st_convolve(landp['elevation'])
+f2 = st_convolve(f)
 plot(landp['elevation'])
 plot(f)
 plot(f2)
