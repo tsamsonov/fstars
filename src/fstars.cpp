@@ -5,6 +5,40 @@
 
 using namespace std;
 
+double interpolate(Rcpp::NumericMatrix  matrix, Rcpp::List coef, double di, double dj) {
+   int i = floor(i);
+   int j = floor(j);
+   double y = di - i;
+   double x = dj - j;
+   return coef[0](i, j) + coef[1](i, j) * x + coef[2](i, j) * y + coef[3](i, j) * x * y;
+}
+
+Rcpp::List bilinear_coef(Rcpp::NumericMatrix  matrix) {
+   size_t ni = matrix.nrow() - 1;
+   size_t nj = matrix.ncol() - 1;
+   Rcpp::NumericMatrix a00(ni, nj), a01(ni, nj), a10(ni, nj), a11(ni, nj);
+
+   auto z00, z10, z01, z11;
+
+   for (auto i = 0; i < ni; ++i) {
+      for (auto j = 0; j < nj; ++j) {
+         z00 = matrix(i, j);
+         z10 = matrix(i+1, j);
+         z01 = matrix(i, j+1);
+         z11 = matrix(i+1, j+1);
+         a00(i, j) = z00;
+         a01(i, j) = z10 - z00;
+         a10(i, j) = z01 - z00;
+         a11(i, j) = z00 - z10 - z01 + z11;
+      }
+   }
+
+   return Rcpp::List::create(Rcpp::Named("a00") = a00,
+                             Rcpp::Named("a01") = a01,
+                             Rcpp::Named("a10") = a10,
+                             Rcpp::Named("a11") = a11);
+}
+
 // [[Rcpp::export]]
 Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
                                   Rcpp::NumericMatrix  kernel) {
@@ -46,7 +80,6 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
    Rcpp::NumericMatrix res(ni, nj);
    double val, penalty;
    int idx, jdx, ikdx, jldx;
-
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {

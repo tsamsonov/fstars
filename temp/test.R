@@ -8,7 +8,7 @@ box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land)
 
 landp = land %>%
   # st_crop(box) %>%
-  st_warp(crs = '+proj=eck3')
+  st_warp(crs = '+proj=mill')
 
 fct = get_factors(landp)
 
