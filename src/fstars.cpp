@@ -26,22 +26,19 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
    double ksum = 0;
 
    for (auto k = 0; k < nk; ++k) {
-      di += k;
       dj = -jstart;
       for (auto l = 0; l < nl; ++l) {
-         dj += l;
          ishift(k, l) = di;
          jshift(k, l) = dj;
-
+         cout << di << ' ' << dj << endl;
          ksum += kernel(k, l);
+         dj++;
       }
+      di++;
    }
 
    Rcpp::NumericMatrix res(ni, nj);
    double val, penalty;
-
-   cout << to_string(NA_REAL) << endl;
-   cout << to_string(matrix(0,0)) << endl;
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
@@ -61,6 +58,10 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
                }
             }
             res(i, j) = res(i, j) / (ksum - penalty);
+
+            if (res(i, j) > 6000) {
+               cout << res(i, j) << ' ' << ksum << ' ' << penalty << endl;
+            }
          }
       }
    }

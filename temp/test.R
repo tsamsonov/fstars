@@ -17,19 +17,19 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
         "#E664E6", "#9B82E6", "#B4FEF0", "#646464", "#C8C8C8", "#FF0000",
         "#FFFFFF", "#5ADCDC")
 
-ggplot() +
-  geom_stars(data = landp['cover']) +
-  scale_fill_manual(values = pal, guide = guide_legend(ncol = 3), name = NULL) +
-  coord_sf(crs = st_crs(landp)) +
-  theme(legend.position = 'bottom')
+# ggplot() +
+#   geom_stars(data = landp['cover']) +
+#   scale_fill_manual(values = pal, guide = guide_legend(ncol = 3), name = NULL) +
+#   coord_sf(crs = st_crs(landp)) +
+#   theme(legend.position = 'bottom')
 
-vars = c(
+# vars = c(
   # "meridional_scale",
   # "parallel_scale",
   # "areal_scale",
   # "angular_distortion",
   # "meridian_parallel_angle",
-  "meridian_convergence"
+  # "meridian_convergence"
   # "parallel_convergence",
   # "tissot_semimajor",
   # "tissot_semiminor",
@@ -38,30 +38,30 @@ vars = c(
   # "dx_dphi",
   # "dy_dlam",
   # "dy_dphi"
-)
+# )
 
 
-for (var in vars) {
-  brks = unique(classIntervals(fct[[var]], n = 10, style = 'fisher')$brks)
+# for (var in vars) {
+#   brks = unique(classIntervals(fct[[var]], n = 10, style = 'fisher')$brks)
+#
+#   cont = st_contour(
+#     fct[var],
+#     na.rm = TRUE,
+#     contour_lines = TRUE,
+#     breaks = brks
+#   )
+#
+#   g = ggplot() +
+#     geom_stars(data = cut(fct[var], breaks = brks)) +
+#     geom_sf(data = cont) +
+#     coord_sf(crs = st_crs(fct)) +
+#     ggtitle(var)
+#
+#   print(g)
+# }
 
-  cont = st_contour(
-    fct[var],
-    na.rm = TRUE,
-    contour_lines = TRUE,
-    breaks = brks
-  )
-
-  g = ggplot() +
-    geom_stars(data = cut(fct[var], breaks = brks)) +
-    geom_sf(data = cont) +
-    coord_sf(crs = st_crs(fct)) +
-    ggtitle(var)
-
-  print(g)
-}
-
-f = st_convolve(landp['elevation'])
-f2 = st_convolve(f)
+f = st_convolve(landp['elevation'], size = 7)
+f2 = st_convolve(f, size = 7)
 plot(landp['elevation'])
 plot(f)
 plot(f2)

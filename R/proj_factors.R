@@ -33,8 +33,8 @@ get_factors <- function(s) {
 #' @export
 #'
 #' @examples
-st_convolve <- function(s, kernel = 'mean', size = c(3, 3), fun = NULL) {
-  krnl = matrix(rep(1/9, 9), nrow = 3)
+st_convolve <- function(s, kernel = 'mean', size = 3, fun = NULL) {
+  krnl = matrix(rep(size^-2, size^2), nrow = size)
   res = filter_matrix(s[[1]], krnl) %>%
     st_as_stars()
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
