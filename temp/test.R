@@ -7,7 +7,7 @@ data(land, package = 'tmap')
 box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
 
 landp = land %>%
-  st_crop(box) %>%
+  # st_crop(box) %>%
   st_warp(crs = '+proj=eck3')
 
 fct = get_factors(landp)
@@ -61,7 +61,7 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 # }
 
 f = st_convolve(landp['elevation'], size = 7)
-f2 = st_convolve(f, size = 7)
+f2 = st_convolve(f, size = 15)
 plot(landp['elevation'])
 plot(f)
 plot(f2)

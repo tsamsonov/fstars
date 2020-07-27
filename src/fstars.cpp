@@ -37,31 +37,38 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
       di++;
    }
 
+   Rcpp::NumericMatrix nodata(matrix.nrow(), matrix.ncol());
+
+   for (auto i = 0; i < matrix.nrow(); ++i)
+      for (auto j = 0; j < matrix.ncol(); ++j)
+         nodata(i, j) = to_string(matrix(i, j)) == "nan";
+
    Rcpp::NumericMatrix res(ni, nj);
    double val, penalty;
+   int idx, jdx, ikdx, jldx;
+
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
-         if (to_string(matrix(i + istart, j + jstart)) == "nan") {
+         idx = i + istart;
+         jdx = j + jstart;
+         if (nodata(idx, jdx) == 1) {
             res(i, j) = NA_REAL;
          } else {
             res(i, j) = 0;
             penalty = 0;
             for (auto k = 0; k < nk; ++k) {
                for (auto l = 0; l < nl; ++l) {
-                  val = matrix(i + istart + ishift(k, l), j + jstart + jshift(k, l));
-                  if (to_string(val) == "nan") {
+                  ikdx = idx + ishift(k, l);
+                  jldx = jdx + jshift(k, l);
+                  if (nodata(ikdx, jldx) == 1) {
                      penalty += kernel(k, l);
                   } else {
-                     res(i, j) += val * kernel(k, l);
+                     res(i, j) += matrix(ikdx, jldx) * kernel(k, l);
                   }
                }
             }
             res(i, j) = res(i, j) / (ksum - penalty);
-
-            if (res(i, j) > 6000) {
-               cout << res(i, j) << ' ' << ksum << ' ' << penalty << endl;
-            }
          }
       }
    }
