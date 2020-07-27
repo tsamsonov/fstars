@@ -6,16 +6,16 @@
 using namespace Rcpp;
 
 // cpp_interpolate_xy
-double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions, const double& d1, const double& d2);
-RcppExport SEXP _fstars_cpp_interpolate_xy(SEXP matrixSEXP, SEXP dimensionsSEXP, SEXP d1SEXP, SEXP d2SEXP) {
+double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions, const double& x, const double& y);
+RcppExport SEXP _fstars_cpp_interpolate_xy(SEXP matrixSEXP, SEXP dimensionsSEXP, SEXP xSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type dimensions(dimensionsSEXP);
-    Rcpp::traits::input_parameter< const double& >::type d1(d1SEXP);
-    Rcpp::traits::input_parameter< const double& >::type d2(d2SEXP);
-    rcpp_result_gen = Rcpp::wrap(cpp_interpolate_xy(matrix, dimensions, d1, d2));
+    Rcpp::traits::input_parameter< const double& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const double& >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_interpolate_xy(matrix, dimensions, x, y));
     return rcpp_result_gen;
 END_RCPP
 }

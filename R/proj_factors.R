@@ -4,8 +4,8 @@
 #' @param x x coordinate to be interpolated
 #' @param y y coordinate to be interpolated
 #'
-#' @return
-#' @export interpolated value
+#' @return interpolated value
+#' @export
 #'
 #' @examples
 interpolate_xy <- function(s, x, y) {
@@ -53,6 +53,10 @@ st_convolve <- function(s, kernel = 'mean', size = 3, fun = NULL) {
     st_as_stars()
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
   attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
+  attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset + attr(s, "dimensions")[[1]]$delta * size %/% 2
+  attr(res, "dimensions")[[2]]$offset = attr(s, "dimensions")[[2]]$offset + attr(s, "dimensions")[[2]]$delta * size %/% 2
+  attr(res, "dimensions")[[1]]$refsys = attr(s, "dimensions")[[1]]$refsys
+  attr(res, "dimensions")[[2]]$refsys = attr(s, "dimensions")[[2]]$refsys
   set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
   return(res)
 }

@@ -4,11 +4,14 @@ library(tidyverse)
 library(classInt)
 
 data(land, package = 'tmap')
-box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
+# box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
+box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
+
+prj = '+proj=eck3'
 
 landp = land %>%
-  # st_crop(box) %>%
-  st_warp(crs = '+proj=mill')
+  st_crop(box) %>%
+  st_warp(crs = prj)
 
 fct = get_factors(landp)
 
@@ -65,3 +68,13 @@ f2 = st_convolve(f, size = 15)
 plot(landp['elevation'])
 plot(f)
 plot(f2)
+
+# ggplot() +
+#   geom_stars(data = f)
+
+coord = st_point(c(37, 54), dim = "XY") %>%
+  st_sfc(crs = 4326) %>%
+  st_transform(prj) %>%
+  st_coordinates()
+
+interpolate_xy(f, coord[1], coord[2])

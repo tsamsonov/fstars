@@ -4,7 +4,7 @@
 \alias{st_convolve}
 \title{Filter stars object with selected kernel}
 \usage{
-st_convolve(s, kernel = "mean", size = c(3, 3), fun = NULL)
+st_convolve(s, kernel = "mean", size = 3, fun = NULL)
 }
 \arguments{
 \item{s}{a raster stars object}

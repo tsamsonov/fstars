@@ -24,7 +24,7 @@ struct Dimension {
       offset = dim["offset"];
       delta = dim["delta"];
       refsys = dim["refsys"];
-      point = dim["point"] == "TRUE" ? true : false;
+      point = dim["point"];
       // values.curv = Rcpp::as<Rcpp::NumericMatrix>(dim["values"]);
    }
 };
@@ -39,15 +39,7 @@ struct Bilinear {
    }
 };
 
-double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) {
-   int i = floor(i);
-   int j = floor(j);
-   double y = di - i;
-   double x = dj - j;
-   return coef.a00(i, j) + coef.a01(i, j) * x + coef.a10(i, j) * y + coef.a11(i, j) * x * y;
-}
-
-Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
+Bilinear bilinear_coef(Rcpp::NumericMatrix  matrix) {
    int ni = matrix.nrow() - 1;
    int nj = matrix.ncol() - 1;
    Bilinear coef(ni, nj);
@@ -70,18 +62,32 @@ Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
    return coef;
 }
 
+double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) {
+   int i = floor(di);
+   int j = floor(dj);
+   double y = di - i;
+   double x = dj - j;
+   return coef.a00(i, j) + coef.a01(i, j) * x + coef.a10(i, j) * y + coef.a11(i, j) * x * y;
+}
+
 // [[Rcpp::export]]
-double cpp_interpolate_xy(Rcpp::NumericMatrix  matrix, Rcpp::List dimensions,
-                      const double& d1, const double& d2) {
+double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
+                          const double& x, const double& y) {
    vector<Dimension> dims;
-   for (Rcpp::List dim: dimensions)
+   for (Rcpp::List dim: dimensions) {
       dims.emplace_back(dim);
+   }
 
    auto coef = bilinear_coef(matrix);
-   double di = (d1 - dims[0].offset) / dims[0].delta;
-   double dj = (d2 - dims[1].offset) / dims[1].delta;
+   double dj = (y - dims[1].offset) / dims[1].delta;
+   double di = (x - dims[0].offset) / dims[0].delta;
 
-   return interpolate_ij(coef, di, dj);
+   if (di < 0 or dj < 0 or di >= coef.a00.nrow() or dj >= coef.a00.ncol()) {
+      cout << di << ' ' << dj << endl;
+      return NA_REAL;
+   }
+   else
+      return interpolate_ij(coef, di, dj);
 }
 
 // [[Rcpp::export]]
@@ -109,7 +115,6 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
       for (auto l = 0; l < nl; ++l) {
          ishift(k, l) = di;
          jshift(k, l) = dj;
-         cout << di << ' ' << dj << endl;
          ksum += kernel(k, l);
          dj++;
       }
