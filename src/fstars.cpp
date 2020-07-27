@@ -5,20 +5,54 @@
 
 using namespace std;
 
-double interpolate(Rcpp::NumericMatrix  matrix, Rcpp::List coef, double di, double dj) {
+union Values {
+   Rcpp::NumericVector rect; // rectilinear raster
+   Rcpp::NumericMatrix curv; // curvilinear raster
+};
+
+struct Dimension {
+   int from;
+   int to;
+   double offset;
+   double delta;
+   const char* refsys;
+   bool point;
+   // Values values;
+   Dimension(Rcpp::List dim) {
+      from = dim["from"];
+      to = dim["to"];
+      offset = dim["offset"];
+      delta = dim["delta"];
+      refsys = dim["refsys"];
+      point = dim["point"] == "TRUE" ? true : false;
+      // values.curv = Rcpp::as<Rcpp::NumericMatrix>(dim["values"]);
+   }
+};
+
+struct Bilinear {
+   Rcpp::NumericMatrix a00, a01, a10, a11;
+   Bilinear(int ni, int nj) {
+      a00 = Rcpp::NumericMatrix(ni, nj);
+      a01 = Rcpp::NumericMatrix(ni, nj);
+      a10 = Rcpp::NumericMatrix(ni, nj);
+      a11 = Rcpp::NumericMatrix(ni, nj);
+   }
+};
+
+double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) {
    int i = floor(i);
    int j = floor(j);
    double y = di - i;
    double x = dj - j;
-   return coef[0](i, j) + coef[1](i, j) * x + coef[2](i, j) * y + coef[3](i, j) * x * y;
+   return coef.a00(i, j) + coef.a01(i, j) * x + coef.a10(i, j) * y + coef.a11(i, j) * x * y;
 }
 
-Rcpp::List bilinear_coef(Rcpp::NumericMatrix  matrix) {
-   size_t ni = matrix.nrow() - 1;
-   size_t nj = matrix.ncol() - 1;
-   Rcpp::NumericMatrix a00(ni, nj), a01(ni, nj), a10(ni, nj), a11(ni, nj);
+Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
+   int ni = matrix.nrow() - 1;
+   int nj = matrix.ncol() - 1;
+   Bilinear coef(ni, nj);
 
-   auto z00, z10, z01, z11;
+   double z00, z10, z01, z11;
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
@@ -26,17 +60,28 @@ Rcpp::List bilinear_coef(Rcpp::NumericMatrix  matrix) {
          z10 = matrix(i+1, j);
          z01 = matrix(i, j+1);
          z11 = matrix(i+1, j+1);
-         a00(i, j) = z00;
-         a01(i, j) = z10 - z00;
-         a10(i, j) = z01 - z00;
-         a11(i, j) = z00 - z10 - z01 + z11;
+         coef.a00(i, j) = z00;
+         coef.a01(i, j) = z01 - z00;
+         coef.a10(i, j) = z10 - z00;
+         coef.a11(i, j) = z00 - z10 - z01 + z11;
       }
    }
 
-   return Rcpp::List::create(Rcpp::Named("a00") = a00,
-                             Rcpp::Named("a01") = a01,
-                             Rcpp::Named("a10") = a10,
-                             Rcpp::Named("a11") = a11);
+   return coef;
+}
+
+// [[Rcpp::export]]
+double cpp_interpolate_xy(Rcpp::NumericMatrix  matrix, Rcpp::List dimensions,
+                      const double& d1, const double& d2) {
+   vector<Dimension> dims;
+   for (Rcpp::List dim: dimensions)
+      dims.emplace_back(dim);
+
+   auto coef = bilinear_coef(matrix);
+   double di = (d1 - dims[0].offset) / dims[0].delta;
+   double dj = (d2 - dims[1].offset) / dims[1].delta;
+
+   return interpolate_ij(coef, di, dj);
 }
 
 // [[Rcpp::export]]

@@ -5,6 +5,20 @@
 
 using namespace Rcpp;
 
+// cpp_interpolate_xy
+double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions, const double& d1, const double& d2);
+RcppExport SEXP _fstars_cpp_interpolate_xy(SEXP matrixSEXP, SEXP dimensionsSEXP, SEXP d1SEXP, SEXP d2SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type dimensions(dimensionsSEXP);
+    Rcpp::traits::input_parameter< const double& >::type d1(d1SEXP);
+    Rcpp::traits::input_parameter< const double& >::type d2(d2SEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_interpolate_xy(matrix, dimensions, d1, d2));
+    return rcpp_result_gen;
+END_RCPP
+}
 // filter_matrix
 Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix matrix, Rcpp::NumericMatrix kernel);
 RcppExport SEXP _fstars_filter_matrix(SEXP matrixSEXP, SEXP kernelSEXP) {
@@ -42,6 +56,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_fstars_cpp_interpolate_xy", (DL_FUNC) &_fstars_cpp_interpolate_xy, 4},
     {"_fstars_filter_matrix", (DL_FUNC) &_fstars_filter_matrix, 2},
     {"_fstars_get_factors_stars", (DL_FUNC) &_fstars_get_factors_stars, 3},
     {"_fstars_test_proj", (DL_FUNC) &_fstars_test_proj, 0},

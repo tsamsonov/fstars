@@ -1,3 +1,17 @@
+#' Extract value using a bilinear interpolation
+#'
+#' @param s stars object
+#' @param x x coordinate to be interpolated
+#' @param y y coordinate to be interpolated
+#'
+#' @return
+#' @export interpolated value
+#'
+#' @examples
+interpolate_xy <- function(s, x, y) {
+  cpp_interpolate_xy(s[[1]], attr(s, "dimensions"), x, y)
+}
+
 #' Returns a stars object with projection factors calculated at each pixel as variables
 #'
 #' @param s stars object
