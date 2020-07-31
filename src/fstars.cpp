@@ -70,6 +70,9 @@ double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) 
    return coef.a00(i, j) + coef.a01(i, j) * x + coef.a10(i, j) * y + coef.a11(i, j) * x * y;
 }
 
+vector<pair<double, double>> cpp_calculate_kernel(const vector<Dimension>& dimensions,
+                                                  )
+
 // [[Rcpp::export]]
 double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
                           const double& x, const double& y) {

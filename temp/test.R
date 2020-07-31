@@ -2,10 +2,11 @@ library(stars)
 library(fstars)
 library(tidyverse)
 library(classInt)
+library(mapview)
 
 data(land, package = 'tmap')
-# box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
-box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
+box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
+# box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
 
 prj = '+proj=eck3'
 
@@ -67,14 +68,16 @@ f = st_convolve(landp['elevation'], size = 7)
 f2 = st_convolve(f, size = 15)
 plot(landp['elevation'])
 plot(f)
-plot(f2)
 
 # ggplot() +
 #   geom_stars(data = f)
 
-coord = st_point(c(37, 54), dim = "XY") %>%
+pt = st_point(c(45, 60), dim = "XY") %>%
   st_sfc(crs = 4326) %>%
-  st_transform(prj) %>%
-  st_coordinates()
+  st_transform(prj)
+
+mapview(f) + mapview(pt)
+
+coord = st_coordinates(pt)
 
 interpolate_xy(f, coord[1], coord[2])
