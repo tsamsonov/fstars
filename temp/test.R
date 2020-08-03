@@ -64,8 +64,8 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 #   print(g)
 # }
 
-f = st_convolve(landp['elevation'], size = 3)
-f2 = st_convolve(landp['elevation'], size = 3, adaptive = TRUE)
+f = st_convolve(landp['elevation'], size = 9)
+f2 = st_convolve(landp['elevation'], size = 9, adaptive = TRUE)
 
 plot(landp['elevation'])
 plot(f2)

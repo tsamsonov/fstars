@@ -254,7 +254,7 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
                                                                   const Rcpp::NumericMatrix& jshift,
                                                                   const vector<Dimension>& dims,
                                                                   const vector<PJ_FACTORS>& pf,
-                                                                  const double& dfactor = 1.0,
+                                                                  const double& dfactor = 2.0,
                                                                   const Method& = DIRECT) {
    auto nrow = ishift.nrow();
    auto ncol = ishift.ncol();
@@ -384,8 +384,16 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
 
                      cout << di << ' ' << dj << endl;
 
-                     value = interpolate_ij(coef, di, dj);
-                     res(i, j) += value * kernel(k, l);
+                     int idi = floor(di);
+                     int idj = floor(dj);
+
+                     if (nodata(idi, idj) + nodata(idi, idj + 1) + nodata(idi + 1, idj) + nodata(idi + 1, idj + 1) > 0) {
+                        penalty += kernel(k, l);
+                     } else {
+                        value = interpolate_ij(coef, di, dj);
+                        res(i, j) += value * kernel(k, l);
+                     }
+
                   }
                }
 
