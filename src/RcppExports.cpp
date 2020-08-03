@@ -5,9 +5,9 @@
 
 using namespace Rcpp;
 
-// cpp_interpolate_xy
-double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions, const double& x, const double& y);
-RcppExport SEXP _fstars_cpp_interpolate_xy(SEXP matrixSEXP, SEXP dimensionsSEXP, SEXP xSEXP, SEXP ySEXP) {
+// rcpp_interpolate_xy
+double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions, const double& x, const double& y);
+RcppExport SEXP _fstars_rcpp_interpolate_xy(SEXP matrixSEXP, SEXP dimensionsSEXP, SEXP xSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -15,32 +15,36 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::List >::type dimensions(dimensionsSEXP);
     Rcpp::traits::input_parameter< const double& >::type x(xSEXP);
     Rcpp::traits::input_parameter< const double& >::type y(ySEXP);
-    rcpp_result_gen = Rcpp::wrap(cpp_interpolate_xy(matrix, dimensions, x, y));
+    rcpp_result_gen = Rcpp::wrap(rcpp_interpolate_xy(matrix, dimensions, x, y));
     return rcpp_result_gen;
 END_RCPP
 }
-// filter_matrix
-Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix matrix, Rcpp::NumericMatrix kernel);
-RcppExport SEXP _fstars_filter_matrix(SEXP matrixSEXP, SEXP kernelSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type kernel(kernelSEXP);
-    rcpp_result_gen = Rcpp::wrap(filter_matrix(matrix, kernel));
-    return rcpp_result_gen;
-END_RCPP
-}
-// get_factors_stars
-Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvilinear);
-RcppExport SEXP _fstars_get_factors_stars(SEXP dimensionsSEXP, SEXP CRSSEXP, SEXP curvilinearSEXP) {
+// rcpp_get_factors
+Rcpp::List rcpp_get_factors(Rcpp::List dimensions, const std::string& CRS, const bool& curvilinear);
+RcppExport SEXP _fstars_rcpp_get_factors(SEXP dimensionsSEXP, SEXP CRSSEXP, SEXP curvilinearSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type dimensions(dimensionsSEXP);
-    Rcpp::traits::input_parameter< std::string >::type CRS(CRSSEXP);
-    Rcpp::traits::input_parameter< bool >::type curvilinear(curvilinearSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_factors_stars(dimensions, CRS, curvilinear));
+    Rcpp::traits::input_parameter< const std::string& >::type CRS(CRSSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type curvilinear(curvilinearSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_get_factors(dimensions, CRS, curvilinear));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcpp_filter_matrix
+Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix& matrix, const Rcpp::NumericMatrix& kernel, const Rcpp::List& dimensions, const std::string& CRS, const bool& curvilinear, const bool& adaptive);
+RcppExport SEXP _fstars_rcpp_filter_matrix(SEXP matrixSEXP, SEXP kernelSEXP, SEXP dimensionsSEXP, SEXP CRSSEXP, SEXP curvilinearSEXP, SEXP adaptiveSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type kernel(kernelSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type dimensions(dimensionsSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type CRS(CRSSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type curvilinear(curvilinearSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type adaptive(adaptiveSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_filter_matrix(matrix, kernel, dimensions, CRS, curvilinear, adaptive));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -56,9 +60,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_fstars_cpp_interpolate_xy", (DL_FUNC) &_fstars_cpp_interpolate_xy, 4},
-    {"_fstars_filter_matrix", (DL_FUNC) &_fstars_filter_matrix, 2},
-    {"_fstars_get_factors_stars", (DL_FUNC) &_fstars_get_factors_stars, 3},
+    {"_fstars_rcpp_interpolate_xy", (DL_FUNC) &_fstars_rcpp_interpolate_xy, 4},
+    {"_fstars_rcpp_get_factors", (DL_FUNC) &_fstars_rcpp_get_factors, 3},
+    {"_fstars_rcpp_filter_matrix", (DL_FUNC) &_fstars_rcpp_filter_matrix, 6},
     {"_fstars_test_proj", (DL_FUNC) &_fstars_test_proj, 0},
     {NULL, NULL, 0}
 };

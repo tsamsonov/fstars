@@ -1,9 +1,19 @@
 #include <Rcpp.h>
 #include <iostream>
 #include <vector>
+#include <map>
+#include <exception>
+#include <typeinfo>
+#include <stdexcept>
 #include <proj.h>
 
 using namespace std;
+
+enum Method {
+   DIRECT,
+   AFFINE,
+   TRAPEZOIDAL
+};
 
 union Values {
    Rcpp::NumericVector rect; // rectilinear raster
@@ -39,6 +49,7 @@ struct Bilinear {
    }
 };
 
+
 Bilinear bilinear_coef(Rcpp::NumericMatrix  matrix) {
    int ni = matrix.nrow() - 1;
    int nj = matrix.ncol() - 1;
@@ -65,16 +76,13 @@ Bilinear bilinear_coef(Rcpp::NumericMatrix  matrix) {
 double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) {
    int i = floor(di);
    int j = floor(dj);
-   double y = di - i;
-   double x = dj - j;
+   double x = di - i;
+   double y = dj - j;
    return coef.a00(i, j) + coef.a01(i, j) * x + coef.a10(i, j) * y + coef.a11(i, j) * x * y;
 }
 
-vector<pair<double, double>> cpp_calculate_kernel(const vector<Dimension>& dimensions,
-                                                  )
-
 // [[Rcpp::export]]
-double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
+double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
                           const double& x, const double& y) {
    vector<Dimension> dims;
    for (Rcpp::List dim: dimensions) {
@@ -93,9 +101,219 @@ double cpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
       return interpolate_ij(coef, di, dj);
 }
 
+vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
+                               const std::string& CRS,
+                               const bool& curvilinear = false) {
+
+   cout << "TRYING FACTORS" << endl;
+
+   int ifrom = dims[0].from;
+   int ito = dims[0].to;
+   double ioffset = dims[0].offset;
+   double idelta = dims[0].delta;
+   int ni = ito - ifrom + 1;
+
+   int jfrom = dims[1].from;
+   int jto = dims[1].to;
+   double joffset = dims[1].offset;
+   double jdelta = dims[1].delta;
+   int nj = jto - jfrom + 1;
+
+   int n = ni * nj;
+
+   const char *prj = CRS.c_str();
+
+   PJ_CONTEXT *C = PJ_DEFAULT_CTX;
+   PJ* P = proj_create(C, prj);
+
+   PJ_FACTORS pf;
+   PJ_COORD pt, gpt;
+
+   int idx = 0;
+
+   vector<PJ_FACTORS> factors(n);
+   PJ_FACTORS f;
+
+   cout << "READY TO CYCLE" << endl;
+
+   for (auto i = 0; i < ni; ++i) {
+      for (auto j = 0; j < nj; ++j) {
+         idx = nj * i + j;
+
+         pt.enu.e = ioffset + i * idelta;
+         pt.enu.n = joffset + j * jdelta;
+
+         gpt = proj_trans(P, PJ_INV, pt);
+
+         // cout << idx << endl;
+         // cout << i << endl;
+         // cout << j << endl;
+         // cout << pt.enu.e << endl;
+         // cout << pt.enu.n << endl;
+         // cout << gpt.lp.lam << endl;
+         // cout << gpt.lp.phi << endl << endl;
+
+         // if (idx == 10277) {
+         //    cout << gpt.lp.lam << endl;
+         //    cout << gpt.lp.phi << endl;
+         // }
+
+         factors[idx] = proj_factors(P, gpt);
+      }
+   }
+
+   return factors;
+}
+
 // [[Rcpp::export]]
-Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
-                                  Rcpp::NumericMatrix  kernel) {
+Rcpp::List rcpp_get_factors(Rcpp::List dimensions, const std::string& CRS,
+                            const bool& curvilinear = false) {
+   vector<Dimension> dims;
+   for (Rcpp::List dim: dimensions) {
+      dims.emplace_back(dim);
+   }
+
+   auto factors = get_factors(dims, CRS, curvilinear);
+
+   int ni = dims[0].to - dims[0].from + 1;
+   int nj = dims[1].to - dims[1].from + 1;
+   int n = ni * nj;
+
+   vector<double> meridional_scale(n, 0);
+   vector<double> parallel_scale(n, 0);
+   vector<double> areal_scale(n, 0);
+   vector<double> angular_distortion(n, 0);
+   vector<double> meridian_parallel_angle(n, 0);
+   vector<double> meridian_convergence(n, 0);
+   vector<double> parallel_convergence(n, 0);
+   vector<double> tissot_semimajor(n, 0);
+   vector<double> tissot_semiminor(n, 0);
+   vector<double> tissot_orientation(n, 0);
+   vector<double> dx_dlam(n, 0);
+   vector<double> dx_dphi(n, 0);
+   vector<double> dy_dlam(n, 0);
+   vector<double> dy_dphi(n, 0);
+
+   double tsin, tcos, k2, h2, dx, dy;
+
+   int idx;
+
+   for (auto i = 0; i < ni; ++i) {
+      for (auto j = 0; j < nj; ++j) {
+         idx = nj * i + j;
+
+         meridional_scale[idx] = factors[idx].meridional_scale;
+         parallel_scale[idx] = factors[idx].parallel_scale;
+         areal_scale[idx] = factors[idx].areal_scale;
+         angular_distortion[idx] = factors[idx].angular_distortion;
+         meridian_parallel_angle[idx] = factors[idx].meridian_parallel_angle;
+         meridian_convergence[idx] = factors[idx].meridian_convergence;
+         tissot_semimajor[idx] = factors[idx].tissot_semimajor;
+         tissot_semiminor[idx] = factors[idx].tissot_semiminor;
+         dx_dlam[idx] = factors[idx].dx_dlam;
+         dx_dphi[idx] = factors[idx].dx_dphi;
+         dy_dlam[idx] = factors[idx].dy_dlam;
+         dy_dphi[idx] = factors[idx].dy_dphi;
+
+         // ADDITIONAL
+
+         // Parallel convergence
+         parallel_convergence[idx] = atan2(factors[idx].dy_dlam, factors[idx].dx_dlam);
+
+         // Tissot ellipse orientation
+         tsin = sin(2.0 * meridian_parallel_angle[idx]);
+         tcos = cos(2.0 * meridian_parallel_angle[idx]);
+         k2 =  parallel_scale[idx] * parallel_scale[idx];
+         h2 =  meridional_scale[idx] * meridional_scale[idx];
+         dx = h2 * tsin;
+         dy = k2 + h2 * tcos;
+
+         tissot_orientation[idx] = 0.5 * atan2(dx, dy);
+      }
+   }
+
+   return Rcpp::List::create(Rcpp::Named("meridional_scale") = meridional_scale,
+                             Rcpp::Named("parallel_scale") = parallel_scale,
+                             Rcpp::Named("areal_scale") = areal_scale,
+                             Rcpp::Named("angular_distortion") = angular_distortion,
+                             Rcpp::Named("meridian_parallel_angle") = meridian_parallel_angle,
+                             Rcpp::Named("meridian_convergence") = meridian_convergence,
+                             Rcpp::Named("parallel_convergence") = parallel_convergence,
+                             Rcpp::Named("tissot_semimajor") = tissot_semimajor,
+                             Rcpp::Named("tissot_semiminor") = tissot_semiminor,
+                             Rcpp::Named("tissot_orientation") = tissot_orientation,
+                             Rcpp::Named("dx_dlam") = dx_dlam,
+                             Rcpp::Named("dx_dphi") = dx_dphi,
+                             Rcpp::Named("dy_dlam") = dy_dlam,
+                             Rcpp::Named("dy_dphi") = dy_dphi);
+}
+
+std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
+                                                                  const int& j,
+                                                                  const Rcpp::NumericMatrix& ishift,
+                                                                  const Rcpp::NumericMatrix& jshift,
+                                                                  const vector<Dimension>& dims,
+                                                                  const vector<PJ_FACTORS>& pf,
+                                                                  const double& dfactor = 1.0,
+                                                                  const Method& = DIRECT) {
+   auto nrow = ishift.nrow();
+   auto ncol = ishift.ncol();
+
+   Rcpp::NumericMatrix x(nrow, ncol);
+   Rcpp::NumericMatrix y(nrow, ncol);
+
+   auto idx = i * (dims[1].to - dims[1].from + 1) + j;
+
+   auto lambdaScale = dfactor * pf[idx].meridional_scale / pf[idx].tissot_semimajor;
+   auto phiScale = dfactor * pf[idx].parallel_scale / pf[idx].tissot_semimajor;
+   auto parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
+
+   int di, dj;
+   double D, A, a, mu;
+
+   for (auto k = 0; k < nrow; ++k) {
+      for (auto l = 0; l < ncol; ++l) {
+         di = ishift(k, l);
+         dj = jshift(k, l);
+         if (di == 0 and dj == 0) {
+            x(k, l) = 0;
+            y(k, l) = 0;
+         } else if (di == 0) {
+            x(k, l) = di * dims[0].delta * phiScale * cos(parallel_convergence);
+            y(k, l) = dj * dims[1].delta * phiScale * sin(parallel_convergence);
+         } else if (dj == 0) {
+            x(k, l) = di * dims[0].delta * lambdaScale * cos(pf[idx].meridian_convergence);
+            y(k, l) = dj * dims[1].delta * lambdaScale * sin(pf[idx].meridian_convergence);
+         } else {
+            D = sqrt(pow(di * dims[0].delta, 2) + pow(dj * dims[1].delta, 2));
+            A = atan2(dj * dims[1].delta, di * dims[0].delta);
+            a = atan2(pf[idx].parallel_scale * sin(pf[idx].angular_distortion) * tan(A),
+                      pf[idx].meridional_scale + pf[idx].parallel_scale * cos(pf[idx].angular_distortion) * tan(A));
+            mu = sqrt(pow(pf[idx].meridional_scale, 2) * pow(cos(A), 2) +
+                      pf[idx].meridional_scale * pf[idx].parallel_scale * cos(pf[idx].angular_distortion) * sin(2 * A) +
+                      pow(pf[idx].parallel_scale, 2) * pow(sin(A), 2));
+
+            x(k, l) = D * mu * sin(a - pf[idx].meridian_convergence);
+            y(k, l) = D * mu * cos(a - pf[idx].meridian_convergence);
+         }
+
+         x(k, l) += i * dims[0].delta + dims[0].offset;
+         y(k, l) += j * dims[1].delta + dims[1].offset;
+      }
+   }
+
+   return std::pair(x, y);
+
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
+                                       const Rcpp::NumericMatrix&  kernel,
+                                       const Rcpp::List& dimensions,
+                                       const std::string& CRS,
+                                       const bool& curvilinear = false,
+                                       const bool& adaptive = false) {
+
    int nk = kernel.nrow();
    int nl = kernel.ncol();
 
@@ -131,148 +349,88 @@ Rcpp::NumericMatrix filter_matrix(Rcpp::NumericMatrix  matrix,
          nodata(i, j) = to_string(matrix(i, j)) == "nan";
 
    Rcpp::NumericMatrix res(ni, nj);
-   double val, penalty;
+   double penalty;
    int idx, jdx, ikdx, jldx;
 
-   for (auto i = 0; i < ni; ++i) {
-      for (auto j = 0; j < nj; ++j) {
-         idx = i + istart;
-         jdx = j + jstart;
-         if (nodata(idx, jdx) == 1) {
-            res(i, j) = NA_REAL;
-         } else {
-            res(i, j) = 0;
-            penalty = 0;
-            for (auto k = 0; k < nk; ++k) {
-               for (auto l = 0; l < nl; ++l) {
-                  ikdx = idx + ishift(k, l);
-                  jldx = jdx + jshift(k, l);
-                  if (nodata(ikdx, jldx) == 1) {
-                     penalty += kernel(k, l);
-                  } else {
-                     res(i, j) += matrix(ikdx, jldx) * kernel(k, l);
+   if (adaptive) {
+      cout << "ADAPTIVE" << endl;
+      vector<Dimension> dims;
+      for (Rcpp::List dim: dimensions) {
+         dims.emplace_back(dim);
+      }
+      auto factors = get_factors(dims, CRS, curvilinear);
+      cout << "FACTORS" << endl;
+      auto coef = bilinear_coef(matrix);
+      cout << "BILINEARS" << endl;
+      double di, dj, value;
+
+      cout << "START FILTERING" << endl;
+
+      for (auto i = 0; i < ni; ++i) {
+         for (auto j = 0; j < nj; ++j) {
+            idx = i + istart;
+            jdx = j + jstart;
+            if (nodata(idx, jdx) == 1) {
+               res(i, j) = NA_REAL;
+            } else {
+               res(i, j) = 0;
+               penalty = 0;
+               auto [x, y] = get_xy_kernel(idx, jdx, ishift, jshift, dims, factors);
+
+               for (auto k = 0; k < nk; ++k) {
+                  for (auto l = 0; l < nl; ++l) {
+                     di = (x(k, l) - dims[0].offset) / dims[0].delta;
+                     dj = (y(k, l) - dims[1].offset) / dims[1].delta;
+
+                     cout << di << ' ' << dj << endl;
+
+                     value = interpolate_ij(coef, di, dj);
+                     res(i, j) += value * kernel(k, l);
                   }
                }
+
+               cout << endl;
+
+
+               res(i, j) = res(i, j) / (ksum - penalty);
             }
-            res(i, j) = res(i, j) / (ksum - penalty);
          }
       }
+   } else {
+      for (auto i = 0; i < ni; ++i) {
+         for (auto j = 0; j < nj; ++j) {
+            idx = i + istart;
+            jdx = j + jstart;
+            if (nodata(idx, jdx) == 1) {
+               res(i, j) = NA_REAL;
+            } else {
+               res(i, j) = 0;
+               penalty = 0;
+               for (auto k = 0; k < nk; ++k) {
+                  for (auto l = 0; l < nl; ++l) {
+                     ikdx = idx + ishift(k, l);
+                     jldx = jdx + jshift(k, l);
+                     if (nodata(ikdx, jldx) == 1) {
+                        penalty += kernel(k, l);
+                     } else {
+                        res(i, j) += matrix(ikdx, jldx) * kernel(k, l);
+                     }
+                  }
+               }
+               res(i, j) = res(i, j) / (ksum - penalty);
+            }
+         }
+      }
+
    }
 
    return res;
 }
 
 // [[Rcpp::export]]
-Rcpp::List get_factors_stars(Rcpp::List dimensions, std::string CRS, bool curvilinear = false) {
-
-   Rcpp::List idim = dimensions[1];
-   int ifrom = idim["from"];
-   int ito = idim["to"];
-   double ioffset = idim["offset"];
-   double idelta = idim["delta"];
-   int ni = ito - ifrom + 1;
-
-   Rcpp::List jdim = dimensions[0];
-   int jfrom = jdim["from"];
-   int jto = jdim["to"];
-   double joffset = jdim["offset"];
-   double jdelta = jdim["delta"];
-   int nj = jto - jfrom + 1;
-
-   int n = ni * nj;
-
-   const char *prj = CRS.c_str();
-
-   PJ_CONTEXT *C = PJ_DEFAULT_CTX;
-   PJ* P = proj_create(C, prj);
-
-   PJ_FACTORS pf;
-   PJ_COORD pt, gpt;
-
-   vector<double> meridional_scale(n, 0);
-   vector<double> parallel_scale(n, 0);
-   vector<double> areal_scale(n, 0);
-   vector<double> angular_distortion(n, 0);
-   vector<double> meridian_parallel_angle(n, 0);
-   vector<double> meridian_convergence(n, 0);
-   vector<double> parallel_convergence(n, 0);
-   vector<double> tissot_semimajor(n, 0);
-   vector<double> tissot_semiminor(n, 0);
-   vector<double> tissot_orientation(n, 0);
-   vector<double> dx_dlam(n, 0);
-   vector<double> dx_dphi(n, 0);
-   vector<double> dy_dlam(n, 0);
-   vector<double> dy_dphi(n, 0);
-
-   int idx = 0;
-
-   double sintheta, tsin, tcos, dir, a2, b2, k2, h2, dx, dy, theta;
-
-   for (auto i = 0; i < ni; ++i) {
-      for (auto j = 0; j < nj; ++j) {
-         idx = nj * i + j;
-         pt.enu.n = ioffset + i * idelta;
-         pt.enu.e = joffset + j * jdelta;
-         gpt = proj_trans(P, PJ_INV, pt);
-         pf = proj_factors(P, gpt);
-
-         meridional_scale[idx] = pf.meridional_scale;
-         parallel_scale[idx] = pf.parallel_scale;
-         areal_scale[idx] = pf.areal_scale;
-         angular_distortion[idx] = pf.angular_distortion;
-         meridian_convergence[idx] = pf.meridian_convergence;
-         meridian_parallel_angle[idx] = pf.meridian_parallel_angle;
-         tissot_semimajor[idx] = pf.tissot_semimajor;
-         tissot_semiminor[idx] = pf.tissot_semiminor;
-         dx_dlam[idx] = pf.dx_dlam;
-         dx_dphi[idx] = pf.dx_dphi;
-         dy_dlam[idx] = pf.dy_dlam;
-         dy_dphi[idx] = pf.dy_dphi;
-
-         parallel_convergence[idx] = atan2(pf.dy_dlam, pf.dx_dlam);
-
-         // Tissot ellipse orientation
-
-         // theta = (pf.meridian_convergence > 0) ? M_PI_2 + pf.meridian_convergence : pf.meridian_parallel_angle;
-         tsin = sin(2.0 * pf.meridian_parallel_angle);
-         tcos = cos(2.0 * pf.meridian_parallel_angle);
-         k2 =  pf.parallel_scale * pf.parallel_scale;
-         h2 =  pf.meridional_scale * pf.meridional_scale;
-         // a2 = pf.tissot_semimajor * pf.tissot_semimajor;
-         // b2 = pf.tissot_semiminor * pf.tissot_semiminor;
-         dx = h2 * tsin;
-         dy = k2 + h2 * tcos;
-
-         dir =  0.5 * atan2(dx, dy);
-         tissot_orientation[idx] = (pf.meridian_convergence > 0) ? 0.5 * atan2(dx, dy) : -0.5 * atan2(dx, dy);
-
-         // tissot_orientation[idx] = sqrt((a2 - h2) / (h2 - b2)) * pf.tissot_semiminor / pf.tissot_semimajor;
-
-
-      }
-   }
-
-   return Rcpp::List::create(Rcpp::Named("meridional_scale") = meridional_scale,
-                             Rcpp::Named("parallel_scale") = parallel_scale,
-                             Rcpp::Named("areal_scale") = areal_scale,
-                             Rcpp::Named("angular_distortion") = angular_distortion,
-                             Rcpp::Named("meridian_parallel_angle") = meridian_parallel_angle,
-                             Rcpp::Named("meridian_convergence") = meridian_convergence,
-                             Rcpp::Named("parallel_convergence") = parallel_convergence,
-                             Rcpp::Named("tissot_semimajor") = tissot_semimajor,
-                             Rcpp::Named("tissot_semiminor") = tissot_semiminor,
-                             Rcpp::Named("tissot_orientation") = tissot_orientation,
-                             Rcpp::Named("dx_dlam") = dx_dlam,
-                             Rcpp::Named("dx_dphi") = dx_dphi,
-                             Rcpp::Named("dy_dlam") = dy_dlam,
-                             Rcpp::Named("dy_dphi") = dy_dphi);
-
-}
-
-// [[Rcpp::export]]
 int test_proj() {
    PJ_CONTEXT *C = PJ_DEFAULT_CTX;
-   PJ_COORD a, b, c, d;
+   PJ_COORD a, b, c;
 
    /* or you may set C=PJ_DEFAULT_CTX if you are sure you will     */
    /* use PJ objects from only one thread                          */
@@ -304,10 +462,6 @@ int test_proj() {
 
    cout << "COORDINATES:" << endl;
    double lat = 60, lon = 100;
-
-   /* a coordinate union representing Copenhagen: 55d N, 12d E    */
-   /* Given that we have used proj_normalize_for_visualization(), the order of
-   /* coordinates is longitude, latitude, and values are expressed in degrees. */
 
    a.lp.lam = proj_torad(lon);
    a.lp.phi = proj_torad(lat);

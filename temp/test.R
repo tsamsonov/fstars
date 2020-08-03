@@ -8,7 +8,7 @@ data(land, package = 'tmap')
 box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
 # box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
 
-prj = '+proj=eck3'
+prj = '+proj=mill'
 
 landp = land %>%
   st_crop(box) %>%
@@ -64,20 +64,22 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 #   print(g)
 # }
 
-f = st_convolve(landp['elevation'], size = 7)
-f2 = st_convolve(f, size = 15)
+f = st_convolve(landp['elevation'], size = 3)
+f2 = st_convolve(landp['elevation'], size = 3, adaptive = TRUE)
+
 plot(landp['elevation'])
+plot(f2)
 plot(f)
 
 # ggplot() +
 #   geom_stars(data = f)
 
-pt = st_point(c(45, 60), dim = "XY") %>%
-  st_sfc(crs = 4326) %>%
-  st_transform(prj)
-
-mapview(f) + mapview(pt)
-
-coord = st_coordinates(pt)
-
-interpolate_xy(f, coord[1], coord[2])
+# pt = st_point(c(45, 60), dim = "XY") %>%
+#   st_sfc(crs = 4326) %>%
+#   st_transform(prj)
+#
+# mapview(f) + mapview(pt)
+#
+# coord = st_coordinates(pt)
+#
+# interpolate_xy(f, coord[1], coord[2])

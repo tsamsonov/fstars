@@ -9,7 +9,7 @@
 #'
 #' @examples
 interpolate_xy <- function(s, x, y) {
-  cpp_interpolate_xy(s[[1]], attr(s, "dimensions"), x, y)
+  rcpp_interpolate_xy(s[[1]], attr(s, "dimensions"), x, y)
 }
 
 #' Returns a stars object with projection factors calculated at each pixel as variables
@@ -19,7 +19,7 @@ interpolate_xy <- function(s, x, y) {
 #' @return stars object
 #' @export
 get_factors <- function(s) {
-  pf = get_factors_stars(attr(s, "dimensions"), st_crs(s)$proj4string)
+  pf = rcpp_get_factors(attr(s, "dimensions"), st_crs(s)$proj4string)
   spf = s %>%
     mutate(meridional_scale = pf[['meridional_scale']],
            parallel_scale = pf[['parallel_scale']],
@@ -47,9 +47,12 @@ get_factors <- function(s) {
 #' @export
 #'
 #' @examples
-st_convolve <- function(s, kernel = 'mean', size = 3, fun = NULL) {
+st_convolve <- function(s, kernel = 'mean', size = 3, fun = NULL, adaptive = FALSE) {
   krnl = matrix(rep(size^-2, size^2), nrow = size)
-  res = filter_matrix(s[[1]], krnl) %>%
+
+  res = rcpp_filter_matrix(s[[1]], krnl, attr(s, "dimensions"), st_crs(s)$proj4string,
+                           attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
+                           adaptive) %>%
     st_as_stars()
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
   attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
