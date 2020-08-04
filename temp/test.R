@@ -8,9 +8,10 @@ data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
 # box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
-box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
+box = st_bbox(c(xmin = -180, xmax = 180, ymin = -85, ymax = 85), crs = st_crs(land))
+# box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
 
-prj = '+proj=mill'
+prj = '+proj=merc'
 
 landp = land %>%
   st_crop(box) %>%
@@ -68,14 +69,15 @@ plot(fct['angular_distortion'])
 #   print(g)
 # }
 
-f = st_convolve(landp['elevation'], size = 3)
-f2 = st_convolve(landp['elevation'], size = 3, adaptive = TRUE)
+f = st_convolve(landp['elevation'], size = 7)
+f2 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
 # f3 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
 # f4 = st_convolve(landp['elevation'], size = 11, adaptive = TRUE)
 
 plot(landp['elevation'])
-plot(f)
 plot(f2)
+plot(f)
+
 # plot(f3)
 # plot(f4)
 

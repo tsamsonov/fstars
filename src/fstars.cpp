@@ -94,7 +94,7 @@ double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
    double di = (x - dims[0].offset) / dims[0].delta;
 
    if (di < 0 or dj < 0 or di >= coef.a00.nrow() or dj >= coef.a00.ncol()) {
-      cout << di << ' ' << dj << endl;
+      // cout << di << ' ' << dj << endl;
       return NA_REAL;
    }
    else
@@ -105,7 +105,7 @@ vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
                                const std::string& CRS,
                                const bool& curvilinear = false) {
 
-   cout << "TRYING FACTORS" << endl;
+   // cout << "TRYING FACTORS" << endl;
 
    int ifrom = dims[0].from;
    int ito = dims[0].to;
@@ -134,7 +134,7 @@ vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
    vector<PJ_FACTORS> factors(n);
    PJ_FACTORS f;
 
-   cout << "READY TO CYCLE" << endl;
+   // cout << "READY TO CYCLE" << endl;
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
@@ -287,7 +287,7 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
                                                                   const Rcpp::NumericMatrix& jshift,
                                                                   const vector<Dimension>& dims,
                                                                   const vector<PJ_FACTORS>& pf,
-                                                                  const double& dfactor = 2.0,
+                                                                  const double& dfactor = 1.0,
                                                                   const Method& = DIRECT) {
    auto nrow = ishift.nrow();
    auto ncol = ishift.ncol();
@@ -297,8 +297,8 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
 
    auto idx = j * (dims[0].to - dims[0].from + 1) + i;
 
-   auto lambdaScale = dfactor * pf[idx].meridional_scale / pf[idx].tissot_semimajor;
-   auto phiScale = dfactor * pf[idx].parallel_scale / pf[idx].tissot_semimajor;
+   auto lambdaScale = pf[idx].meridional_scale * pf[idx].tissot_semimajor / dfactor;
+   auto phiScale = pf[idx].parallel_scale * pf[idx].tissot_semimajor / dfactor;
    auto parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
 
    int di, dj;
@@ -320,13 +320,13 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
          } else {
             D = sqrt(pow(di * dims[0].delta, 2) + pow(dj * dims[1].delta, 2));
             A = east_to_geo(atan2(dj * dims[1].delta, di * dims[0].delta));
-            a = to_closest(north_to_geo(atan(pf[idx].parallel_scale * sin(pf[idx].meridian_parallel_angle) * tan(A) /
-                     (pf[idx].meridional_scale + pf[idx].parallel_scale * cos(pf[idx].meridian_parallel_angle) * tan(A)))), A);
-            mu = sqrt(pow(pf[idx].meridional_scale, 2) * pow(cos(A), 2) +
-                      pf[idx].meridional_scale * pf[idx].parallel_scale * cos(pf[idx].meridian_parallel_angle) * sin(2 * A) +
-                      pow(pf[idx].parallel_scale, 2) * pow(sin(A), 2));
+            a = to_closest(north_to_geo(atan(phiScale * sin(pf[idx].meridian_parallel_angle) * tan(A) /
+                           (lambdaScale + phiScale * cos(pf[idx].meridian_parallel_angle) * tan(A)))), A);
+            mu = sqrt(pow(lambdaScale, 2) * pow(cos(A), 2) +
+                      lambdaScale * phiScale * cos(pf[idx].meridian_parallel_angle) * sin(2 * A) +
+                      pow(phiScale, 2) * pow(sin(A), 2));
 
-            cout << D << ' ' << A << ' ' << mu * D << ' ' << a << endl;
+            // cout << D << ' ' << A << ' ' << mu * D << ' ' << a << endl;
 
             x(k, l) = D * mu * sin(a - pf[idx].meridian_convergence);
             y(k, l) = D * mu * cos(a - pf[idx].meridian_convergence);
@@ -336,7 +336,7 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
          y(k, l) += j * dims[1].delta + dims[1].offset;
       }
    }
-   cout << endl;
+   // cout << endl;
 
    return std::pair(x, y);
 
@@ -389,18 +389,25 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
    int idx, jdx, ikdx, jldx;
 
    if (adaptive) {
-      cout << "ADAPTIVE" << endl;
+      // cout << "ADAPTIVE" << endl;
       vector<Dimension> dims;
       for (Rcpp::List dim: dimensions) {
          dims.emplace_back(dim);
       }
       auto factors = get_factors(dims, CRS, curvilinear);
-      cout << "FACTORS" << endl;
+      double max_semimajor = 0.0;
+      for (auto f : factors) {
+         if (f.tissot_semimajor > max_semimajor){
+            max_semimajor = f.tissot_semimajor;
+         }
+      }
+
+      // cout << "FACTORS" << endl;
       auto coef = bilinear_coef(matrix);
-      cout << "BILINEARS" << endl;
+      // cout << "BILINEARS" << endl;
       double di, dj, value;
 
-      cout << "START FILTERING" << endl;
+      // cout << "START FILTERING" << endl;
 
       for (auto i = 0; i < ni; ++i) {
          for (auto j = 0; j < nj; ++j) {
@@ -411,14 +418,14 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
             } else {
                res(i, j) = 0;
                penalty = 0;
-               auto [x, y] = get_xy_kernel(idx, jdx, ishift, jshift, dims, factors);
+               auto [x, y] = get_xy_kernel(idx, jdx, ishift, jshift, dims, factors, max_semimajor);
 
                for (auto k = 0; k < nk; ++k) {
                   for (auto l = 0; l < nl; ++l) {
                      di = (x(k, l) - dims[0].offset) / dims[0].delta;
                      dj = (y(k, l) - dims[1].offset) / dims[1].delta;
 
-                     cout << di << ' ' << dj << endl;
+                     // cout << di << ' ' << dj << endl;
 
                      int idi = floor(di);
                      int idj = floor(dj);
@@ -433,7 +440,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                   }
                }
 
-               cout << endl;
+               // cout << endl;
 
 
                res(i, j) = res(i, j) / (ksum - penalty);
