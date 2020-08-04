@@ -138,7 +138,7 @@ vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
-         idx = nj * i + j;
+         idx = ni * j + i;
 
          pt.enu.e = ioffset + i * idelta;
          pt.enu.n = joffset + j * jdelta;
@@ -248,6 +248,39 @@ Rcpp::List rcpp_get_factors(Rcpp::List dimensions, const std::string& CRS,
                              Rcpp::Named("dy_dphi") = dy_dphi);
 }
 
+double east_to_geo(const double& az) {
+   if (az >= 0 && az <= M_PI_2) {
+      return M_PI_2 - az;
+   } else if (az > M_PI_2){
+      return M_PI + M_PI + M_PI_2 - az;
+   } else {
+      return M_PI_2 - az;
+   }
+}
+
+double north_to_geo(const double& az) {
+   if (az < 0) {
+      return M_PI + M_PI + az;
+   } else {
+      return az;
+   }
+}
+
+double to_closest(const double& az, const double& az_ref) {
+   auto dif = az - az_ref;
+   if (abs(dif) < M_PI_2) {
+      return az;
+   } else if (dif < 0) {
+      return az + M_PI;
+   } else {
+      return az - M_PI;
+   }
+}
+
+double to_near(const double& az, const double& ref) {
+
+}
+
 std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
                                                                   const int& j,
                                                                   const Rcpp::NumericMatrix& ishift,
@@ -262,7 +295,7 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
    Rcpp::NumericMatrix x(nrow, ncol);
    Rcpp::NumericMatrix y(nrow, ncol);
 
-   auto idx = i * (dims[1].to - dims[1].from + 1) + j;
+   auto idx = j * (dims[0].to - dims[0].from + 1) + i;
 
    auto lambdaScale = dfactor * pf[idx].meridional_scale / pf[idx].tissot_semimajor;
    auto phiScale = dfactor * pf[idx].parallel_scale / pf[idx].tissot_semimajor;
@@ -278,20 +311,22 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
          if (di == 0 and dj == 0) {
             x(k, l) = 0;
             y(k, l) = 0;
-         } else if (di == 0) {
+         } else if (dj == 0) {
             x(k, l) = di * dims[0].delta * phiScale * cos(parallel_convergence);
             y(k, l) = dj * dims[1].delta * phiScale * sin(parallel_convergence);
-         } else if (dj == 0) {
-            x(k, l) = di * dims[0].delta * lambdaScale * cos(pf[idx].meridian_convergence);
-            y(k, l) = dj * dims[1].delta * lambdaScale * sin(pf[idx].meridian_convergence);
+         } else if (di == 0) {
+            x(k, l) = di * dims[0].delta * lambdaScale * sin(pf[idx].meridian_convergence);
+            y(k, l) = dj * dims[1].delta * lambdaScale * cos(pf[idx].meridian_convergence);
          } else {
             D = sqrt(pow(di * dims[0].delta, 2) + pow(dj * dims[1].delta, 2));
-            A = atan2(dj * dims[1].delta, di * dims[0].delta);
-            a = atan2(pf[idx].parallel_scale * sin(pf[idx].angular_distortion) * tan(A),
-                      pf[idx].meridional_scale + pf[idx].parallel_scale * cos(pf[idx].angular_distortion) * tan(A));
+            A = east_to_geo(atan2(dj * dims[1].delta, di * dims[0].delta));
+            a = to_closest(north_to_geo(atan(pf[idx].parallel_scale * sin(pf[idx].meridian_parallel_angle) * tan(A) /
+                     (pf[idx].meridional_scale + pf[idx].parallel_scale * cos(pf[idx].meridian_parallel_angle) * tan(A)))), A);
             mu = sqrt(pow(pf[idx].meridional_scale, 2) * pow(cos(A), 2) +
-                      pf[idx].meridional_scale * pf[idx].parallel_scale * cos(pf[idx].angular_distortion) * sin(2 * A) +
+                      pf[idx].meridional_scale * pf[idx].parallel_scale * cos(pf[idx].meridian_parallel_angle) * sin(2 * A) +
                       pow(pf[idx].parallel_scale, 2) * pow(sin(A), 2));
+
+            cout << D << ' ' << A << ' ' << mu * D << ' ' << a << endl;
 
             x(k, l) = D * mu * sin(a - pf[idx].meridian_convergence);
             y(k, l) = D * mu * cos(a - pf[idx].meridian_convergence);
@@ -301,6 +336,7 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
          y(k, l) += j * dims[1].delta + dims[1].offset;
       }
    }
+   cout << endl;
 
    return std::pair(x, y);
 
