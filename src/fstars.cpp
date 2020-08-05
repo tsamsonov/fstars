@@ -319,12 +319,12 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
    Rcpp::NumericMatrix x(nrow, ncol);
    Rcpp::NumericMatrix y(nrow, ncol);
 
-   auto lambdaScale = pf[idx].meridional_scale / istart;
-   auto phiScale = pf[idx].parallel_scale / jstart;
+   auto lambdaScale = kernel.nrow() * pf[idx].meridional_scale / nk;
+   auto phiScale = kernel.ncol() * pf[idx].parallel_scale / nl;
    auto parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
 
-   cout << nk << ' ' << nl << endl;
-   cout << lambdaScale << ' ' << phiScale << ' ' << pf[idx].meridional_scale <<  ' ' << pf[idx].parallel_scale << ' ' << pf[idx].tissot_semimajor << ' ' << dfactor << endl << endl;
+   // cout << nk << ' ' << nl << endl;
+   // cout << lambdaScale << ' ' << phiScale << ' ' << pf[idx].meridional_scale <<  ' ' << pf[idx].parallel_scale << ' ' << pf[idx].tissot_semimajor << ' ' << dfactor << endl << endl;
 
    double D, A, a, mu;
 
@@ -449,7 +449,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                      di = (x(k, l) - dims[0].offset) / dims[0].delta;
                      dj = (y(k, l) - dims[1].offset) / dims[1].delta;
 
-                     cout << di << ' ' << dj << endl;
+                     // cout << di << ' ' << dj << endl;
 
                      int idi = floor(di);
                      int idj = floor(dj);
@@ -462,7 +462,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                   }
                }
 
-               cout << endl;
+               // cout << endl;
 
                res(i, j) = res(i, j) / ksum;
             }

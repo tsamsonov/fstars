@@ -14,7 +14,7 @@ box = st_bbox(c(xmin = -20, xmax = 120, ymin = -60, ymax = 72), crs = st_crs(lan
 cland = land %>%
   st_crop(box)
 
-prj = '+proj=merc'
+prj = '+proj=mill'
 
 clandp = cland %>%
   st_warp(crs = prj)
@@ -72,20 +72,17 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 #   print(g)
 # }
 
-f = st_convolve(clandp['elevation'], size = 3)
-f3 = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
-# f2 = st_convolve(landp['elevation'], size = 9, adaptive = TRUE)
-# f1 = st_convolve(landp['elevation'], size = 21, adaptive = TRUE)
-
+f0 = st_convolve(clandp['elevation'], size = 9)
+f1 = st_convolve(clandp['elevation'], size = 9, adaptive = TRUE)
 
 # f3 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
 # f4 = st_convolve(landp['elevation'], size = 11, adaptive = TRUE)
 
 plot(clandp['elevation'])
-plot(f3)
-plot(f)
+plot(f0)
+plot(f1)
 
-mapview(f3[1])
+# mapview(f3[1])
 
 
 # plot(f2)
