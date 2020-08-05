@@ -297,9 +297,11 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
 
    auto idx = j * (dims[0].to - dims[0].from + 1) + i;
 
-   auto lambdaScale = pf[idx].meridional_scale * pf[idx].tissot_semimajor / dfactor;
-   auto phiScale = pf[idx].parallel_scale * pf[idx].tissot_semimajor / dfactor;
+   auto lambdaScale = pf[idx].meridional_scale / dfactor;
+   auto phiScale = pf[idx].parallel_scale / dfactor;
    auto parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
+
+   // cout << lambdaScale << ' ' << phiScale << ' ' << pf[idx].meridional_scale <<  ' ' << pf[idx].parallel_scale << ' ' << pf[idx].tissot_semimajor << ' ' << dfactor << endl << endl;
 
    int di, dj;
    double D, A, a, mu;
@@ -430,7 +432,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                      int idi = floor(di);
                      int idj = floor(dj);
 
-                     if (nodata(idi, idj) + nodata(idi, idj + 1) + nodata(idi + 1, idj) + nodata(idi + 1, idj + 1) > 0) {
+                     if ((nodata(idi, idj) + nodata(idi, idj + 1) + nodata(idi + 1, idj) + nodata(idi + 1, idj + 1)) > 0) {
                         penalty += kernel(k, l);
                      } else {
                         value = interpolate_ij(coef, di, dj);

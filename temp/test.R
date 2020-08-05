@@ -8,8 +8,8 @@ data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
 # box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
-box = st_bbox(c(xmin = -180, xmax = 180, ymin = -85, ymax = 85), crs = st_crs(land))
-# box = st_bbox(c(xmin = 20, xmax = 60, ymin = 45, ymax = 65), crs = st_crs(land))
+# box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
+box = st_bbox(c(xmin = -12, xmax = 60, ymin = 28, ymax = 75), crs = st_crs(land))
 
 prj = '+proj=merc'
 
@@ -24,7 +24,7 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
         "#E664E6", "#9B82E6", "#B4FEF0", "#646464", "#C8C8C8", "#FF0000",
         "#FFFFFF", "#5ADCDC")
 
-plot(fct['angular_distortion'])
+plot(fct['tissot_orientation'])
 
 # ggplot() +
 #   geom_stars(data = landp['cover']) +
@@ -69,14 +69,24 @@ plot(fct['angular_distortion'])
 #   print(g)
 # }
 
-f = st_convolve(landp['elevation'], size = 7)
-f2 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
+f = st_convolve(landp['elevation'], size = 9)
+f1 = st_convolve(landp['elevation'], size = 21, adaptive = TRUE)
+f2 = st_convolve(landp['elevation'], size = 9, adaptive = TRUE)
+f3 = st_convolve(landp['elevation'], size = 3, adaptive = TRUE)
 # f3 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
 # f4 = st_convolve(landp['elevation'], size = 11, adaptive = TRUE)
 
 plot(landp['elevation'])
+plot(f3)
 plot(f2)
+plot(f1)
 plot(f)
+
+# df = f2 - f
+#
+# mapview(f)
+# mapview(f2)
+# mapview(df)
 
 # plot(f3)
 # plot(f4)
