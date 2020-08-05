@@ -7,24 +7,27 @@ library(mapview)
 data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
-# box = st_bbox(c(xmin = -12, xmax = 60, ymin = 30, ymax = 72), crs = st_crs(land))
+box = st_bbox(c(xmin = -20, xmax = 120, ymin = -60, ymax = 72), crs = st_crs(land))
 # box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
-box = st_bbox(c(xmin = -12, xmax = 60, ymin = 28, ymax = 75), crs = st_crs(land))
+# box = st_bbox(c(xmin = 0, xmax = 170, ymin = 0, ymax = 80), crs = st_crs(land))
+
+cland = land %>%
+  st_crop(box)
 
 prj = '+proj=merc'
 
-landp = land %>%
-  st_crop(box) %>%
+clandp = cland %>%
   st_warp(crs = prj)
 
-fct = get_factors(landp)
+# landp = land %>%
+#   st_warp(crs = prj)
+
+fct = get_factors(clandp)
 
 pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
         "#467864", "#B4E664", "#9BC832", "#EBFF64", "#F06432", "#9132E6",
         "#E664E6", "#9B82E6", "#B4FEF0", "#646464", "#C8C8C8", "#FF0000",
         "#FFFFFF", "#5ADCDC")
-
-plot(fct['tissot_orientation'])
 
 # ggplot() +
 #   geom_stars(data = landp['cover']) +
@@ -69,18 +72,23 @@ plot(fct['tissot_orientation'])
 #   print(g)
 # }
 
-f = st_convolve(landp['elevation'], size = 9)
-f1 = st_convolve(landp['elevation'], size = 21, adaptive = TRUE)
-f2 = st_convolve(landp['elevation'], size = 9, adaptive = TRUE)
-f3 = st_convolve(landp['elevation'], size = 3, adaptive = TRUE)
+f = st_convolve(clandp['elevation'], size = 5)
+f3 = st_convolve(clandp['elevation'], size = 5, adaptive = TRUE)
+# f2 = st_convolve(landp['elevation'], size = 9, adaptive = TRUE)
+# f1 = st_convolve(landp['elevation'], size = 21, adaptive = TRUE)
+
+
 # f3 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
 # f4 = st_convolve(landp['elevation'], size = 11, adaptive = TRUE)
 
-plot(landp['elevation'])
+plot(clandp['elevation'])
 plot(f3)
-plot(f2)
-plot(f1)
 plot(f)
+
+
+# plot(f2)
+# plot(f1)
+# plot(f)
 
 # df = f2 - f
 #
