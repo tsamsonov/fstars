@@ -7,14 +7,14 @@ library(mapview)
 data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
-box = st_bbox(c(xmin = -20, xmax = 120, ymin = -60, ymax = 72), crs = st_crs(land))
+box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 80), crs = st_crs(land))
 # box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
 # box = st_bbox(c(xmin = 0, xmax = 170, ymin = 0, ymax = 80), crs = st_crs(land))
 
 cland = land %>%
   st_crop(box)
 
-prj = '+proj=mill'
+prj = '+proj=moll'
 
 clandp = cland %>%
   st_warp(crs = prj)
@@ -72,8 +72,8 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 #   print(g)
 # }
 
-f0 = st_convolve(clandp['elevation'], size = 9)
-f1 = st_convolve(clandp['elevation'], size = 9, adaptive = TRUE)
+f0 = st_convolve(clandp['elevation'], size = 15)
+f1 = st_convolve(clandp['elevation'], size = 15, adaptive = TRUE)
 
 # f3 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
 # f4 = st_convolve(landp['elevation'], size = 11, adaptive = TRUE)

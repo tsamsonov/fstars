@@ -4,12 +4,12 @@
 \alias{st_convolve}
 \title{Filter stars object with selected kernel}
 \usage{
-st_convolve(s, kernel = "mean", size = 3, fun = NULL)
+st_convolve(s, stats = "mean", size = 3, adaptive = FALSE)
 }
 \arguments{
 \item{s}{a raster stars object}
 
-\item{kernel}{string (name of the filter), matrix (with values)}
+\item{stats}{string (name of the filter), matrix (with values)}
 
 \item{size}{}
 }

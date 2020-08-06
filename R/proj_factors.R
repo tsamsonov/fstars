@@ -40,20 +40,21 @@ get_factors <- function(s) {
 #' Filter stars object with selected kernel
 #'
 #' @param s a raster stars object
-#' @param kernel string (name of the filter), matrix (with values)
+#' @param stats string (name of the filter), matrix (with values)
 #' @param size
 #'
 #' @return matrix
 #' @export
 #'
 #' @examples
-st_convolve <- function(s, kernel = 'mean', size = 3, fun = NULL, adaptive = FALSE) {
+st_convolve <- function(s, stats = 'mean', size = 3, adaptive = FALSE) {
   krnl = matrix(rep(size^-2, size^2), nrow = size)
 
-  res = rcpp_filter_matrix(s[[1]], krnl, attr(s, "dimensions"), st_crs(s)$proj4string,
+  res = rcpp_filter_matrix(s[[1]], attr(s, "dimensions"), st_crs(s)$proj4string, size, stats,
                            attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
                            adaptive) %>%
     st_as_stars()
+
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
   attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
   attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset + attr(s, "dimensions")[[1]]$delta * size %/% 2
@@ -61,6 +62,7 @@ st_convolve <- function(s, kernel = 'mean', size = 3, fun = NULL, adaptive = FAL
   attr(res, "dimensions")[[1]]$refsys = attr(s, "dimensions")[[1]]$refsys
   attr(res, "dimensions")[[2]]$refsys = attr(s, "dimensions")[[2]]$refsys
   set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
+
   return(res)
 }
 

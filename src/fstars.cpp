@@ -283,7 +283,7 @@ double to_near(const double& az, const double& ref) {
 
 std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
                                                                   const int& j,
-                                                                  const Rcpp::NumericMatrix& kernel,
+                                                                  const int& ksize,
                                                                   const vector<Dimension>& dims,
                                                                   const vector<PJ_FACTORS>& pf,
                                                                   const double& dfactor = 1.0,
@@ -291,8 +291,8 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
 
    auto idx = j * (dims[0].to - dims[0].from + 1) + i;
 
-   int nk = 2 * ceil(kernel.nrow() * pf[idx].tissot_semimajor / 2.0) + 1;
-   int nl = 2 * ceil(kernel.ncol() * pf[idx].tissot_semimajor / 2.0) + 1;
+   int nk = 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
+   int nl = 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
 
    Rcpp::NumericMatrix ishift(nk, nl);
    Rcpp::NumericMatrix jshift(nk, nl);
@@ -313,15 +313,14 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
       di++;
    }
 
+   auto lambdaScale = ksize * pf[idx].meridional_scale / nk;
+   auto phiScale = ksize * pf[idx].parallel_scale / nl;
+   auto parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
    auto nrow = ishift.nrow();
    auto ncol = ishift.ncol();
 
    Rcpp::NumericMatrix x(nrow, ncol);
    Rcpp::NumericMatrix y(nrow, ncol);
-
-   auto lambdaScale = kernel.nrow() * pf[idx].meridional_scale / nk;
-   auto phiScale = kernel.ncol() * pf[idx].parallel_scale / nl;
-   auto parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
 
    // cout << nk << ' ' << nl << endl;
    // cout << lambdaScale << ' ' << phiScale << ' ' << pf[idx].meridional_scale <<  ' ' << pf[idx].parallel_scale << ' ' << pf[idx].tissot_semimajor << ' ' << dfactor << endl << endl;
@@ -366,32 +365,19 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
 
 }
 
-// [[Rcpp::export]]
-Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
-                                       const Rcpp::NumericMatrix&  kernel,
-                                       const Rcpp::List& dimensions,
-                                       const std::string& CRS,
-                                       const bool& curvilinear = false,
-                                       const bool& adaptive = false) {
+std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_shifts(const int&  ksize) {
+   Rcpp::NumericMatrix ishift(ksize, ksize);
+   Rcpp::NumericMatrix jshift(ksize, ksize);
 
-   int nk = kernel.nrow();
-   int nl = kernel.ncol();
-
-   int ni = matrix.nrow() - nk + 1;
-   int nj = matrix.ncol() - nl + 1;
-
-   Rcpp::NumericMatrix ishift(nk, nl);
-   Rcpp::NumericMatrix jshift(nk, nl);
-
-   int istart = nk / 2;
-   int jstart = nl / 2;
+   int istart = ksize / 2;
+   int jstart = ksize / 2;
 
    int di = -istart;
    int dj;
 
-   for (auto k = 0; k < nk; ++k) {
+   for (auto k = 0; k < ksize; ++k) {
       dj = -jstart;
-      for (auto l = 0; l < nl; ++l) {
+      for (auto l = 0; l < ksize; ++l) {
          ishift(k, l) = di;
          jshift(k, l) = dj;
          dj++;
@@ -399,96 +385,111 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       di++;
    }
 
-   Rcpp::NumericMatrix nodata(matrix.nrow(), matrix.ncol());
+   return std::pair(ishift, jshift);
+}
 
-   for (auto i = 0; i < matrix.nrow(); ++i)
-      for (auto j = 0; j < matrix.ncol(); ++j)
+// [[Rcpp::export]]
+Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
+                                       const Rcpp::List& dimensions,
+                                       const std::string& CRS,
+                                       const int& ksize,
+                                       const std::vector<std::string>& stats,
+                                       const bool& curvilinear = false,
+                                       const bool& adaptive = false) {
+
+   int ni = matrix.nrow();
+   int nj = matrix.ncol();
+
+   int nk = ksize;
+   int nl = ksize;
+
+   auto [ishift, jshift] = get_shifts(ksize);
+
+   Rcpp::NumericMatrix nodata(ni, nj);
+
+   for (auto i = 0; i < ni; ++i)
+      for (auto j = 0; j < nj; ++j)
          nodata(i, j) = to_string(matrix(i, j)) == "nan";
 
    Rcpp::NumericMatrix res(ni, nj);
-   double penalty, ksum;
-   int idx, jdx, ikdx, jldx;
+   double ksum;
+   int ikl, jkl, idi, idj;
 
    if (adaptive) {
-      // cout << "ADAPTIVE" << endl;
       vector<Dimension> dims;
       for (Rcpp::List dim: dimensions) {
          dims.emplace_back(dim);
       }
       auto factors = get_factors(dims, CRS, curvilinear);
-      double max_semimajor = 0.0;
-      for (auto f : factors) {
-         if (f.tissot_semimajor > max_semimajor){
-            max_semimajor = f.tissot_semimajor;
-         }
-      }
 
-      // cout << "FACTORS" << endl;
+      // double max_semimajor = 0.0;
+      // for (auto f : factors) {
+      //    if (f.tissot_semimajor > max_semimajor){
+      //       max_semimajor = f.tissot_semimajor;
+      //    }
+      // }
+
       auto coef = bilinear_coef(matrix);
-      // cout << "BILINEARS" << endl;
       double di, dj;
-
-      // cout << "START FILTERING" << endl;
 
       for (auto i = 0; i < ni; ++i) {
          for (auto j = 0; j < nj; ++j) {
-            idx = i + istart;
-            jdx = j + jstart;
-            if (nodata(idx, jdx) == 1) {
+            if (nodata(i, j) == 1) {
                res(i, j) = NA_REAL;
             } else {
-               res(i, j) = 0;
-               ksum = 0;
-               auto [x, y] = get_xy_kernel(idx, jdx, kernel, dims, factors, max_semimajor);
+               auto [x, y] = get_xy_kernel(i, j, ksize, dims, factors);
 
                nk = x.nrow();
                nl = x.ncol();
+
+               std::vector<double> values;
+               values.reserve(nk * nl);
 
                for (auto k = 0; k < nk; ++k) {
                   for (auto l = 0; l < nl; ++l) {
                      di = (x(k, l) - dims[0].offset) / dims[0].delta;
                      dj = (y(k, l) - dims[1].offset) / dims[1].delta;
 
-                     // cout << di << ' ' << dj << endl;
+                     if (di >= 0 and dj >= 0 and di < ni or dj < nj) {
 
-                     int idi = floor(di);
-                     int idj = floor(dj);
+                        // cout << di << ' ' << dj << endl;
 
-                     if (nodata(idi, idj) + nodata(idi, idj + 1) + nodata(idi + 1, idj) + nodata(idi + 1, idj + 1) == 0) {
-                        res(i, j) += interpolate_ij(coef, di, dj);
-                        ksum += 1;
+                        idi = floor(di);
+                        idj = floor(dj);
+
+                        if (nodata(idi, idj) + nodata(idi, idj + 1) + nodata(idi + 1, idj) + nodata(idi + 1, idj + 1) == 0) {
+                           values.push_back(interpolate_ij(coef, di, dj));
+                        }
                      }
-
                   }
                }
 
                // cout << endl;
 
-               res(i, j) = res(i, j) / ksum;
+               res(i, j) = std::accumulate(values.begin(), values.end(), 0) / values.size();
             }
          }
       }
    } else {
       for (auto i = 0; i < ni; ++i) {
          for (auto j = 0; j < nj; ++j) {
-            idx = i + istart;
-            jdx = j + jstart;
-            if (nodata(idx, jdx) == 1) {
+            if (nodata(i, j) == 1) {
                res(i, j) = NA_REAL;
             } else {
-               res(i, j) = 0;
-               ksum = 0;
+               std::vector<double> values;
+               values.reserve(nk * nl);
                for (auto k = 0; k < nk; ++k) {
                   for (auto l = 0; l < nl; ++l) {
-                     ikdx = idx + ishift(k, l);
-                     jldx = jdx + jshift(k, l);
-                     if (nodata(ikdx, jldx) == 0) {
-                        res(i, j) += matrix(ikdx, jldx) * kernel(k, l);
-                        ksum += kernel(k, l);
+                     ikl = i + ishift(k, l);
+                     jkl = j + jshift(k, l);
+                     if (ikl >= 0 and jkl >= 0 and ikl < ni or jkl < nj) {
+                        if (nodata(ikl, jkl) == 0) {
+                           values.push_back(matrix(ikl, jkl));
+                        }
                      }
                   }
                }
-               res(i, j) = res(i, j) / ksum;
+               res(i, j) = std::accumulate(values.begin(), values.end(), 0) / values.size();
             }
          }
       }
