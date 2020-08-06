@@ -7,7 +7,7 @@ library(mapview)
 data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
-box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 80), crs = st_crs(land))
+box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 # box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
 # box = st_bbox(c(xmin = 0, xmax = 170, ymin = 0, ymax = 80), crs = st_crs(land))
 
