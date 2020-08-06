@@ -7,9 +7,10 @@ library(mapview)
 data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
-box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 # box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
 # box = st_bbox(c(xmin = 0, xmax = 170, ymin = 0, ymax = 80), crs = st_crs(land))
+
+box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 
 cland = land %>%
   st_crop(box)
@@ -24,10 +25,17 @@ clandp = cland %>%
 
 fct = get_factors(clandp)
 
-pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
-        "#467864", "#B4E664", "#9BC832", "#EBFF64", "#F06432", "#9132E6",
-        "#E664E6", "#9B82E6", "#B4FEF0", "#646464", "#C8C8C8", "#FF0000",
-        "#FFFFFF", "#5ADCDC")
+f0 = st_convolve(clandp['elevation'], size = 15)
+f1 = st_convolve(clandp['elevation'], size = 15, adaptive = TRUE)
+
+plot(clandp['elevation'])
+plot(f0)
+plot(f1)
+
+# pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
+#         "#467864", "#B4E664", "#9BC832", "#EBFF64", "#F06432", "#9132E6",
+#         "#E664E6", "#9B82E6", "#B4FEF0", "#646464", "#C8C8C8", "#FF0000",
+#         "#FFFFFF", "#5ADCDC")
 
 # ggplot() +
 #   geom_stars(data = landp['cover']) +
@@ -71,16 +79,6 @@ pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 #
 #   print(g)
 # }
-
-f0 = st_convolve(clandp['elevation'], size = 15)
-f1 = st_convolve(clandp['elevation'], size = 15, adaptive = TRUE)
-
-# f3 = st_convolve(landp['elevation'], size = 7, adaptive = TRUE)
-# f4 = st_convolve(landp['elevation'], size = 11, adaptive = TRUE)
-
-plot(clandp['elevation'])
-plot(f0)
-plot(f1)
 
 # mapview(f3[1])
 

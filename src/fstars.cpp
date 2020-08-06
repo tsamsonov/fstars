@@ -29,7 +29,7 @@ struct Dimension {
    double delta;
    const char* refsys;
    bool point;
-   // Values values;
+
    Dimension(Rcpp::List dim) {
       from = dim["from"];
       to = dim["to"];
@@ -55,13 +55,7 @@ struct Bilinear {
 Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
    int ni = matrix.nrow();
    int nj = matrix.ncol();
-
-   // cout << "TRYING COEF" << ' ' << ni << ' ' << nj << endl;
    Bilinear coef(ni, nj);
-
-   // cout << "RAW BILINEARS" << endl;
-
-
    double z00, z10, z01, z11;
 
    for (auto i = 0; i < ni-1; ++i) {
@@ -74,8 +68,6 @@ Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
          coef.a01(i, j) = z01 - z00;
          coef.a10(i, j) = z10 - z00;
          coef.a11(i, j) = z00 - z10 - z01 + z11;
-
-         // cout << z00 << '  ' << z10 << '  ' << z01 << ' ' << z11 << endl;
       }
    }
 
@@ -130,7 +122,6 @@ double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
    double di = (x - dims[0].offset) / dims[0].delta;
 
    if (di < 0 or dj < 0 or di >= coef.a00.nrow() or dj >= coef.a00.ncol()) {
-      // cout << di << ' ' << dj << endl;
       return NA_REAL;
    }
    else
@@ -140,9 +131,6 @@ double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
 vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
                                const std::string& CRS,
                                const bool& curvilinear = false) {
-
-   // cout << "TRYING FACTORS" << endl;
-
    int ifrom = dims[0].from;
    int ito = dims[0].to;
    double ioffset = dims[0].offset;
@@ -162,38 +150,18 @@ vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
    PJ_CONTEXT *C = PJ_DEFAULT_CTX;
    PJ* P = proj_create(C, prj);
 
-   PJ_FACTORS pf;
    PJ_COORD pt, gpt;
 
    int idx = 0;
 
    vector<PJ_FACTORS> factors(n);
-   PJ_FACTORS f;
-
-   // cout << "READY TO CYCLE" << endl;
 
    for (auto i = 0; i < ni; ++i) {
       for (auto j = 0; j < nj; ++j) {
          idx = ni * j + i;
-
          pt.enu.e = ioffset + i * idelta;
          pt.enu.n = joffset + j * jdelta;
-
          gpt = proj_trans(P, PJ_INV, pt);
-
-         // cout << idx << endl;
-         // cout << i << endl;
-         // cout << j << endl;
-         // cout << pt.enu.e << endl;
-         // cout << pt.enu.n << endl;
-         // cout << gpt.lp.lam << endl;
-         // cout << gpt.lp.phi << endl << endl;
-
-         // if (idx == 10277) {
-         //    cout << gpt.lp.lam << endl;
-         //    cout << gpt.lp.phi << endl;
-         // }
-
          factors[idx] = proj_factors(P, gpt);
       }
    }
@@ -354,9 +322,6 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
    Rcpp::NumericMatrix x(nrow, ncol);
    Rcpp::NumericMatrix y(nrow, ncol);
 
-   // cout << nk << ' ' << nl << endl;
-   // cout << lambdaScale << ' ' << phiScale << ' ' << pf[idx].meridional_scale <<  ' ' << pf[idx].parallel_scale << ' ' << pf[idx].tissot_semimajor << ' ' << dfactor << endl << endl;
-
    double D, A, a, mu;
 
    for (auto k = 0; k < nrow; ++k) {
@@ -381,8 +346,6 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
                       lambdaScale * phiScale * cos(pf[idx].meridian_parallel_angle) * sin(2 * A) +
                       pow(phiScale, 2) * pow(sin(A), 2));
 
-            // cout << D << ' ' << A << ' ' << mu * D << ' ' << a << endl;
-
             x(k, l) = D * mu * sin(a - pf[idx].meridian_convergence);
             y(k, l) = D * mu * cos(a - pf[idx].meridian_convergence);
          }
@@ -391,7 +354,6 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
          y(k, l) += j * dims[1].delta + dims[1].offset;
       }
    }
-   // cout << endl;
 
    return std::pair(x, y);
 
@@ -433,18 +395,10 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
    int ni = matrix.nrow();
    int nj = matrix.ncol();
 
-   // cout << ni << ' ' << nj << endl;
-   //
-   // for (auto s: stats) {
-   //    cout << s << endl;
-   // }
-
    int nk = ksize;
    int nl = ksize;
 
    auto [ishift, jshift] = get_shifts(ksize);
-
-   // cout << "SHIFTS" << endl;
 
    Rcpp::NumericMatrix nodata(ni, nj);
    for (auto i = 0; i < ni; ++i)
@@ -461,10 +415,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       is_bilinear(ni-1, j) = nodata(ni-1, j) + nodata(ni-1, j+1) < 1;
    is_bilinear(ni-1, nj-1) = nodata(ni-1, nj-1) < 1;
 
-   // cout << "NODATA" << endl;
-
    Rcpp::NumericMatrix res(ni, nj);
-   double ksum;
    int ikl, jkl, idi, idj;
 
    if (adaptive) {
@@ -473,25 +424,10 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
          dims.emplace_back(dim);
       }
 
-      // cout << "DIMS" << endl;
-
       auto factors = get_factors(dims, CRS, curvilinear);
-
-      // cout << "FACTORS" << endl;
-
-      // double max_semimajor = 0.0;
-      // for (auto f : factors) {
-      //    if (f.tissot_semimajor > max_semimajor){
-      //       max_semimajor = f.tissot_semimajor;
-      //    }
-      // }
 
       auto coef = bilinear_coef(matrix);
       double di, dj;
-
-      // cout << "BILINEARS" << endl;
-
-      // this_thread::sleep_for(chrono::milliseconds(500));
 
       std::vector<double> values;
 
@@ -499,63 +435,28 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
          for (auto j = 0; j < nj; ++j) {
             if (nodata(i, j) == 1) {
                res(i, j) = NA_REAL;
-               // cout << "NO DATA" << endl;
             } else {
-
-               // cout << "YEAH" << endl;
-               // cout << matrix(i, j) << ' ' << nodata(i, j) << endl;
-               // this_thread::sleep_for(chrono::milliseconds(5000));
-
                auto [x, y] = get_xy_kernel(i, j, ksize, dims, factors);
-
-               // cout << "GOT KERNEL" << endl;
-               // // this_thread::sleep_for(chrono::milliseconds(500));
 
                nk = x.nrow();
                nl = x.ncol();
 
-               // cout << "CREATED VECTOR" << endl;
-               // cout << nk << ' '  << nl << endl;
-               // this_thread::sleep_for(chrono::milliseconds(500));
-
                for (auto k = 0; k < nk; ++k) {
                   for (auto l = 0; l < nl; ++l) {
-
-                     // cout << "TRYING TO GET X and Y" << endl;
-                     // this_thread::sleep_for(chrono::milliseconds(500));
 
                      di = (x(k, l) - dims[0].offset) / dims[0].delta;
                      dj = (y(k, l) - dims[1].offset) / dims[1].delta;
 
-                     // cout << di << ' ' << dj << endl;
-
-                     // this_thread::sleep_for(chrono::milliseconds(5000));
-//
                      if (di >= 0 and dj >= 0 and di < ni and dj < nj) {
-
-                        // cout << di << ' ' << dj << endl;
-
                         idi = floor(di);
                         idj = floor(dj);
 
-                        // cout << "TRYING TO CHECK NODATA" << endl;
-                        // this_thread::sleep_for(chrono::milliseconds(500));
-
                         if (is_bilinear(idi, idj) == 1) {
-
-                           // cout << "TRYING TO PUSH" << endl;
-                           // this_thread::sleep_for(chrono::milliseconds(500));
-
                            values.push_back(interpolate_ij(coef, di, dj));
                         }
                      }
                   }
                }
-
-               // cout << endl;
-
-               // cout << "ACCUMULATING " << values.size() << " values" << endl;
-               // this_thread::sleep_for(chrono::milliseconds(500));
 
                if (double n = values.size(); n > 0) {
                   res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n;
@@ -603,12 +504,6 @@ int test_proj() {
    PJ_CONTEXT *C = PJ_DEFAULT_CTX;
    PJ_COORD a, b, c;
 
-   /* or you may set C=PJ_DEFAULT_CTX if you are sure you will     */
-   /* use PJ objects from only one thread                          */
-   // C = proj_context_create();
-
-   // proj_context_use_proj4_init_rules(PJ_DEFAULT_CTX, 1);
-
    const char* prj = "+proj=moll";
    PJ* crs = proj_create(C, (string(prj) + " +type=crs").c_str());
    PJ* P = proj_create(C, prj);
@@ -637,7 +532,6 @@ int test_proj() {
    a.lp.lam = proj_torad(lon);
    a.lp.phi = proj_torad(lat);
 
-   /* transform to UTM zone 32, then back to geographical */
    b = proj_trans(P, PJ_FWD, a);
    cout << "easting: " << b.enu.e << ", northing: " << b.enu.n << endl;
 
@@ -645,8 +539,6 @@ int test_proj() {
    cout << "longitude: " << c.lp.lam << ", latitude: " << c.lp.phi << endl << endl;
 
    PJ_FACTORS pf = proj_factors(P, a);
-
-
 
    cout << "PROJECTION FACTORS:" << endl;
    cout << "meridional_scale: "  << pf.meridional_scale << endl;
@@ -668,5 +560,6 @@ int test_proj() {
    /* Clean up */
    proj_destroy (P);
    proj_context_destroy (C); /* may be omitted in the single threaded case */
+
    return 0;
 }
