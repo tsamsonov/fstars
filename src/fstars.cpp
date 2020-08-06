@@ -451,7 +451,6 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       for (auto j = 0; j < nj; ++j)
          nodata(i, j) = to_string(matrix(i, j)) == "nan";
 
-   cout << "CHECK_BIL" << endl;
    Rcpp::NumericMatrix is_bilinear(ni, nj);
    for (auto i = 0; i < ni-1; ++i)
       for (auto j = 0; j < nj-1; ++j)
@@ -461,8 +460,6 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
    for (auto j = 0; j < nj-1; ++j)
       is_bilinear(ni-1, j) = nodata(ni-1, j) + nodata(ni-1, j+1) < 1;
    is_bilinear(ni-1, nj-1) = nodata(ni-1, nj-1) < 1;
-
-   cout << "DONE!!!" << endl;
 
    // cout << "NODATA" << endl;
 
@@ -560,7 +557,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                // cout << "ACCUMULATING " << values.size() << " values" << endl;
                // this_thread::sleep_for(chrono::milliseconds(500));
 
-               if (auto n = values.size(); n > 0) {
+               if (double n = values.size(); n > 0) {
                   res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n;
                } else {
                   res(i, j) = NA_REAL;
@@ -590,12 +587,12 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                      }
                   }
                }
-               res(i, j) = std::accumulate(values.begin(), values.end(), 0) / values.size();
+               res(i, j) = std::accumulate(values.begin(), values.end(), 0) / (double) (values.size());
+
                values.clear();
             }
          }
       }
-
    }
 
    return res;
