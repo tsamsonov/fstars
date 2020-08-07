@@ -281,37 +281,45 @@ double to_closest(const double& az, const double& az_ref) {
    }
 }
 
-std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
-                                                                  const int& j,
-                                                                  const int& ksize,
-                                                                  const vector<Dimension>& dims,
-                                                                  const vector<PJ_FACTORS>& pf,
-                                                                  const double& dfactor = 1.0,
-                                                                  const Method& = DIRECT) {
+std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_shifts(const int&  ksize) {
 
-   auto idx = j * (dims[0].to - dims[0].from + 1) + i;
+   Rcpp::NumericMatrix ishift(ksize, ksize);
+   Rcpp::NumericMatrix jshift(ksize, ksize);
 
-   int nk = 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
-   int nl = 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
-
-   Rcpp::NumericMatrix ishift(nk, nl);
-   Rcpp::NumericMatrix jshift(nk, nl);
-
-   int istart = nk / 2;
-   int jstart = nl / 2;
+   int istart = ksize / 2;
+   int jstart = ksize / 2;
 
    int di = -istart;
    int dj;
 
-   for (auto k = 0; k < nk; ++k) {
+   for (auto k = 0; k < ksize; ++k) {
       dj = -jstart;
-      for (auto l = 0; l < nl; ++l) {
+      for (auto l = 0; l < ksize; ++l) {
          ishift(k, l) = di;
          jshift(k, l) = dj;
          dj++;
       }
       di++;
    }
+
+   return std::pair(ishift, jshift);
+}
+
+std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const int& i,
+                                                                           const int& j,
+                                                                           const int& ksize,
+                                                                           const vector<Dimension>& dims,
+                                                                           const vector<PJ_FACTORS>& pf,
+                                                                           const bool& fixed = false,
+                                                                           const double& dfactor = 1.0,
+                                                                           const Method& = DIRECT) {
+
+   auto idx = j * (dims[0].to - dims[0].from + 1) + i;
+
+   int nk = fixed ? ksize : 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
+   int nl = fixed ? ksize : 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
+
+   auto [ishift, jshift] = get_shifts(nk);
 
    auto lambdaScale = ksize * pf[idx].meridional_scale / nk;
    auto phiScale = ksize * pf[idx].parallel_scale / nl;
@@ -322,7 +330,7 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
    Rcpp::NumericMatrix x(nrow, ncol);
    Rcpp::NumericMatrix y(nrow, ncol);
 
-   double D, A, a, mu;
+   double D, A, a, mu, di, dj;
 
    for (auto k = 0; k < nrow; ++k) {
       for (auto l = 0; l < ncol; ++l) {
@@ -349,38 +357,24 @@ std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_xy_kernel(const int& i,
             x(k, l) = D * mu * sin(a - pf[idx].meridian_convergence);
             y(k, l) = D * mu * cos(a - pf[idx].meridian_convergence);
          }
-
-         x(k, l) += i * dims[0].delta + dims[0].offset;
-         y(k, l) += j * dims[1].delta + dims[1].offset;
       }
    }
 
-   return std::pair(x, y);
+   double scale = 1;
 
-}
-
-std::pair<Rcpp::NumericMatrix, Rcpp::NumericMatrix> get_shifts(const int&  ksize) {
-
-   Rcpp::NumericMatrix ishift(ksize, ksize);
-   Rcpp::NumericMatrix jshift(ksize, ksize);
-
-   int istart = ksize / 2;
-   int jstart = ksize / 2;
-
-   int di = -istart;
-   int dj;
-
-   for (auto k = 0; k < ksize; ++k) {
-      dj = -jstart;
-      for (auto l = 0; l < ksize; ++l) {
-         ishift(k, l) = di;
-         jshift(k, l) = dj;
-         dj++;
-      }
-      di++;
+   if (fixed) {
+      auto abs_compare = [](double a, double b){ return std::abs(a) < std::abs(b); };
+      double xmax = *std::max_element(x.begin(), x.end(), abs_compare);
+      double ymax = *std::max_element(y.begin(), y.end(), abs_compare);
+      int k2 = ksize / 2;
+      scale = k2 * dims[0].delta / std::max(xmax, ymax);
    }
 
-   return std::pair(ishift, jshift);
+   x = x * scale + i * dims[0].delta + dims[0].offset;
+   y = y * scale + j * dims[1].delta + dims[1].offset;
+
+   return std::tuple(x, y, scale);
+
 }
 
 // [[Rcpp::export]]
@@ -436,7 +430,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
             if (nodata(i, j) == 1) {
                res(i, j) = NA_REAL;
             } else {
-               auto [x, y] = get_xy_kernel(i, j, ksize, dims, factors);
+               auto [x, y, scale] = get_xy_kernel(i, j, ksize, dims, factors);
 
                nk = x.nrow();
                nl = x.ncol();
