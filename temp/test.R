@@ -6,9 +6,9 @@ library(mapview)
 
 data(land, package = 'tmap')
 
-# box = st_bbox(c(xmin = 30, xmax = 60, ymin = 50, ymax = 60), crs = st_crs(land))
+# box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
 # box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
-# box = st_bbox(c(xmin = 0, xmax = 170, ymin = 0, ymax = 80), crs = st_crs(land))
+# box = st_bbox(c(xmin = -20, xmax = 140, ymin = -35, ymax = 70), crs = st_crs(land))
 
 box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 
@@ -25,12 +25,26 @@ clandp = cland %>%
 
 fct = get_factors(clandp)
 
-f0 = st_convolve(clandp['elevation'], size = 15)
-f1 = st_convolve(clandp['elevation'], size = 15, adaptive = TRUE)
+f0 = st_convolve(clandp['elevation'], size = 9)
+# f1 = st_convolve(clandp['elevation'], size = 9, adaptive = TRUE)
+
+# write_stars(f1, 'temp/filtered.tif')
+
+# f1s = st_convolve(f1, 'slope', adaptive = TRUE)
+# write_stars(f1s, 'temp/slope.tif')
+
+f0s = st_convolve(f0, 'slope', adaptive = TRUE)
+
 
 plot(clandp['elevation'])
 plot(f0)
-plot(f1)
+plot(f0s)
+# plot(f1)
+# plot(f1s)
+
+
+# plot(f1)
+# plot(f1s)
 
 # pal = c("#003200", "#3C9600", "#006E00", "#556E19", "#00C800", "#8CBE8C",
 #         "#467864", "#B4E664", "#9BC832", "#EBFF64", "#F06432", "#9132E6",

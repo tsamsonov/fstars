@@ -50,9 +50,11 @@ get_factors <- function(s) {
 st_convolve <- function(s, stats = 'mean', size = 3, adaptive = FALSE) {
   krnl = matrix(rep(size^-2, size^2), nrow = size)
 
+  fixed = ifelse(stats %in% c('slope', 'aspect', 'curvature', 'hill'), TRUE, FALSE)
+
   res = rcpp_filter_matrix(s[[1]], attr(s, "dimensions"), st_crs(s)$proj4string, size, stats,
                            attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
-                           adaptive) %>%
+                           adaptive, fixed) %>%
     st_as_stars()
 
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
