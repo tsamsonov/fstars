@@ -25,8 +25,8 @@ clandp = cland %>%
 
 fct = get_factors(clandp)
 
-f0 = st_convolve(clandp['elevation'], size = 7)
-f1 = st_convolve(clandp['elevation'], size = 7, adaptive = TRUE)
+f0 = st_convolve(clandp['elevation'], size = 15)
+f1 = st_convolve(clandp['elevation'], size = 15, adaptive = TRUE)
 
 plot(clandp['elevation'])
 plot(f0)

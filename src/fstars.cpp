@@ -30,7 +30,7 @@ struct Dimension {
    const char* refsys;
    bool point;
 
-   Dimension(Rcpp::List dim) {
+   Dimension(const Rcpp::List& dim) {
       from = dim["from"];
       to = dim["to"];
       offset = dim["offset"];
@@ -43,7 +43,7 @@ struct Dimension {
 
 struct Bilinear {
    Rcpp::NumericMatrix a00, a01, a10, a11;
-   Bilinear(int ni, int nj) {
+   Bilinear(const int& ni, const int& nj) {
       a00 = Rcpp::NumericMatrix(ni, nj);
       a01 = Rcpp::NumericMatrix(ni, nj);
       a10 = Rcpp::NumericMatrix(ni, nj);
@@ -110,7 +110,7 @@ double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) 
 }
 
 // [[Rcpp::export]]
-double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
+double rcpp_interpolate_xy(const Rcpp::NumericMatrix& matrix, const Rcpp::List& dimensions,
                           const double& x, const double& y) {
    vector<Dimension> dims;
    for (Rcpp::List dim: dimensions) {
@@ -127,6 +127,39 @@ double rcpp_interpolate_xy(Rcpp::NumericMatrix matrix, Rcpp::List dimensions,
    else
       return interpolate_ij(coef, di, dj);
 }
+
+class ZevenbergenSurface {
+   double A, B, C, D, E, F, G, H, I;
+   double z1, z2, z3, z4, z5, z6, z7, z8, z9;
+   double res;
+
+   public:
+      ZevenbergenSurface(const Rcpp::NumericMatrix& matrix, const Rcpp::List& dimensions,
+                             const Rcpp::NumericMatrix& x, const Rcpp::NumericMatrix& y,
+                             const double& scale) {
+      z1 = rcpp_interpolate_xy(matrix, dimensions, x(0, 0), y(0, 0));
+      z2 = rcpp_interpolate_xy(matrix, dimensions, x(0, 1), y(0, 1));
+      z3 = rcpp_interpolate_xy(matrix, dimensions, x(0, 2), y(0, 2));
+      z4 = rcpp_interpolate_xy(matrix, dimensions, x(1, 0), y(1, 0));
+      z5 = rcpp_interpolate_xy(matrix, dimensions, x(1, 1), y(1, 1));
+      z6 = rcpp_interpolate_xy(matrix, dimensions, x(1, 2), y(1, 2));
+      z7 = rcpp_interpolate_xy(matrix, dimensions, x(2, 0), y(2, 0));
+      z8 = rcpp_interpolate_xy(matrix, dimensions, x(2, 1), y(2, 1));
+      z9 = rcpp_interpolate_xy(matrix, dimensions, x(2, 2), y(2, 2));
+
+      res = scale * abs((double)(Rcpp::as<Rcpp::List>(dimensions[0])["delta"]));
+
+      A = ((z1 + z3 + z7 + z9)/4.f - (z2 + z4 + z6 + z8)/2.f + z5) / pow(res, 4);
+      B = ((z1 + z3 - z7 - z9)/4.f - (z2 - z8)/2.f) / pow(res, 3);
+      C = ((-z1 + z3 - z7 + z9)/4.f + (z2 - z6)/2.f) / pow(res, 3);
+      D = ((z4 + z6)/2.f - z5) / pow(res, 2);
+      E = ((z2 + z8)/2.f - z5) / pow(res, 2);
+      F = (-z1 + z3 + z7 - z9) / (4.f * pow(res, 2));
+      G = (-z4 + z6) / (2.f * res);
+      H = (z2 - z8) / (2.f * res);
+      I = z5;
+   }
+};
 
 vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
                                const std::string& CRS,
@@ -170,7 +203,7 @@ vector<PJ_FACTORS> get_factors(const vector<Dimension>& dims,
 }
 
 // [[Rcpp::export]]
-Rcpp::List rcpp_get_factors(Rcpp::List dimensions, const std::string& CRS,
+Rcpp::List rcpp_get_factors(const Rcpp::List& dimensions, const std::string& CRS,
                             const bool& curvilinear = false) {
    vector<Dimension> dims;
    for (Rcpp::List dim: dimensions) {
@@ -360,7 +393,7 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
       }
    }
 
-   double scale = 1;
+   double scale = 1.0;
 
    if (fixed) {
       auto abs_compare = [](double a, double b){ return std::abs(a) < std::abs(b); };
@@ -384,7 +417,8 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                                        const int& ksize,
                                        const std::vector<std::string>& stats,
                                        const bool& curvilinear = false,
-                                       const bool& adaptive = false) {
+                                       const bool& adaptive = false,
+                                       const bool& fixed = false) {
 
    int ni = matrix.nrow();
    int nj = matrix.ncol();
@@ -430,7 +464,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
             if (nodata(i, j) == 1) {
                res(i, j) = NA_REAL;
             } else {
-               auto [x, y, scale] = get_xy_kernel(i, j, ksize, dims, factors);
+               auto [x, y, scale] = get_xy_kernel(i, j, ksize, dims, factors, fixed);
 
                nk = x.nrow();
                nl = x.ncol();
@@ -453,7 +487,16 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                }
 
                if (double n = values.size(); n > 0) {
-                  res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n;
+                  for (auto stat : stats) {
+                     if (stat == "mean") {
+                        res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n;
+                     } else if (stat == "slope") {
+
+                     } else {
+                        res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n; // use mean by default
+                     }
+                  }
+
                } else {
                   res(i, j) = NA_REAL;
                }
