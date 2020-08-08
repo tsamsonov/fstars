@@ -6,11 +6,11 @@ library(mapview)
 
 data(land, package = 'tmap')
 
-# box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
+box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
 # box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
 # box = st_bbox(c(xmin = -20, xmax = 140, ymin = -35, ymax = 70), crs = st_crs(land))
 
-box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
+# box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 
 cland = land %>%
   st_crop(box)
@@ -26,20 +26,23 @@ clandp = cland %>%
 fct = get_factors(clandp)
 
 f0 = st_convolve(clandp['elevation'], size = 9)
-# f1 = st_convolve(clandp['elevation'], size = 9, adaptive = TRUE)
+f1 = st_convolve(clandp['elevation'], size = 9, adaptive = TRUE)
 
 # write_stars(f1, 'temp/filtered.tif')
 
 # f1s = st_convolve(f1, 'slope', adaptive = TRUE)
-# write_stars(f1s, 'temp/slope.tif')
+
 
 f0s = st_convolve(f0, 'slope', adaptive = TRUE)
+# f0h = st_convolve(f0, 'hill', adaptive = TRUE)
+# write_stars(f0s, 'temp/slope.tif')
 
 
 plot(clandp['elevation'])
 plot(f0)
 plot(f0s)
-# plot(f1)
+# plot(f0h)
+plot(f1)
 # plot(f1s)
 
 

@@ -62,13 +62,13 @@ Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
 
    for (auto i = 0; i < ni-1; ++i) {
       for (auto j = 0; j < nj-1; ++j) {
-         z00 = matrix(i,   j);
-         z10 = matrix(i+1, j);
-         z01 = matrix(i,   j+1);
-         z11 = matrix(i+1, j+1);
+         z00 = matrix(i,   j+1);
+         z10 = matrix(i+1, j+1);
+         z01 = matrix(i,   j);
+         z11 = matrix(i+1, j);
          coef.a00(i, j) = z00;
-         coef.a01(i, j) = z01 - z00;
          coef.a10(i, j) = z10 - z00;
+         coef.a01(i, j) = z01 - z00;
          coef.a11(i, j) = z00 - z10 - z01 + z11;
       }
    }
@@ -79,25 +79,25 @@ Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
       z01 = matrix(i,   nj-1);
       z11 = matrix(i+1, nj-1);
       coef.a00(i, nj-1) = z00;
-      coef.a01(i, nj-1) = z01 - z00;
       coef.a10(i, nj-1) = z10 - z00;
+      coef.a01(i, nj-1) = z01 - z00;
       coef.a11(i, nj-1) = z00 - z10 - z01 + z11;
    }
 
    for (auto j = 0; j < nj-1; ++j) {
-      z00 = matrix(ni-1, j);
-      z10 = matrix(ni-1, j);
-      z01 = matrix(ni-1, j+1);
-      z11 = matrix(ni-1, j+1);
+      z00 = matrix(ni-1, j+1);
+      z10 = matrix(ni-1, j+1);
+      z01 = matrix(ni-1, j);
+      z11 = matrix(ni-1, j);
       coef.a00(ni-1, j) = z00;
-      coef.a01(ni-1, j) = z01 - z00;
       coef.a10(ni-1, j) = z10 - z00;
+      coef.a01(ni-1, j) = z01 - z00;
       coef.a11(ni-1, j) = z00 - z10 - z01 + z11;
    }
 
    coef.a00(ni-1, nj-1) = matrix(ni-1, nj-1);
-   coef.a01(ni-1, nj-1) = 0;
    coef.a10(ni-1, nj-1) = 0;
+   coef.a01(ni-1, nj-1) = 0;
    coef.a11(ni-1, nj-1) = 0;
 
    return coef;
@@ -108,7 +108,7 @@ double interpolate_ij(const Bilinear& coef, const double& di, const double& dj) 
    int j = floor(dj);
    double x = di - i;
    double y = dj - j;
-   return coef.a00(i, j) + coef.a01(i, j) * x + coef.a10(i, j) * y + coef.a11(i, j) * x * y;
+   return coef.a00(i, j) + coef.a10(i, j) * x + coef.a01(i, j) * y + coef.a11(i, j) * x * y;
 }
 
 // [[Rcpp::export]]
@@ -137,50 +137,34 @@ double rcpp_interpolate_xy(const Rcpp::NumericMatrix& matrix,
    double dj = (y - dims[1].offset) / dims[1].delta;
    double di = (x - dims[0].offset) / dims[0].delta;
 
-   if (di < 0 or dj < 0 or di >= coef.a00.nrow() or dj >= coef.a00.ncol()) {
+   if (di < 0 or dj < 0 or di >= coef.a00.nrow() or dj >= coef.a00.ncol())
       return NA_REAL;
-   }
    else
       return interpolate_ij(coef, di, dj);
 }
 
 class ZevenbergenSurface {
-   double A, B, C, D, E, F, G, H, I;
-   double z1, z2, z3, z4, z5, z6, z7, z8, z9;
+   vector<double> z;
    double res;
+   double A, B, C, D, E, F, G, H, I;
 
    public:
-      ZevenbergenSurface(const Rcpp::NumericMatrix& matrix,
-                         const vector<Dimension>& dims, const Bilinear& coef,
-                         const Rcpp::NumericMatrix& x, const Rcpp::NumericMatrix& y,
-                         const double& scale) {
-         z1 = rcpp_interpolate_xy(matrix, dims, coef, x(0, 0), y(0, 0));
-         z2 = rcpp_interpolate_xy(matrix, dims, coef, x(1, 0), y(1, 0));
-         z3 = rcpp_interpolate_xy(matrix, dims, coef, x(2, 0), y(2, 0));
-         z4 = rcpp_interpolate_xy(matrix, dims, coef, x(0, 1), y(0, 1));
-         z5 = rcpp_interpolate_xy(matrix, dims, coef, x(1, 1), y(1, 1));
-         z6 = rcpp_interpolate_xy(matrix, dims, coef, x(2, 1), y(2, 1));
-         z7 = rcpp_interpolate_xy(matrix, dims, coef, x(0, 2), y(0, 2));
-         z8 = rcpp_interpolate_xy(matrix, dims, coef, x(1, 2), y(1, 2));
-         z9 = rcpp_interpolate_xy(matrix, dims, coef, x(2, 2), y(2, 2));
+      ZevenbergenSurface(vector<double>& values, const double& res) {
+         z = std::move(values);
 
-         res = scale * abs(dims[0].delta);
-
-         cout << res<< endl;
-
-         A = ((z1 + z3 + z7 + z9)/4.f - (z2 + z4 + z6 + z8)/2.f + z5) / pow(res, 4);
-         B = ((z1 + z3 - z7 - z9)/4.f - (z2 - z8)/2.f) / pow(res, 3);
-         C = ((-z1 + z3 - z7 + z9)/4.f + (z2 - z6)/2.f) / pow(res, 3);
-         D = ((z4 + z6)/2.f - z5) / pow(res, 2);
-         E = ((z2 + z8)/2.f - z5) / pow(res, 2);
-         F = (-z1 + z3 + z7 - z9) / (4.f * pow(res, 2));
-         G = (-z4 + z6) / (2.f * res);
-         H = (z2 - z8) / (2.f * res);
-         I = z5;
+         A = ((z[0] + z[2] + z[6] + z[8])/4.f - (z[1] + z[3] + z[5] + z[7])/2.f + z[4]) / pow(res, 4);
+         B = ((z[0] + z[2] - z[6] - z[8])/4.f - (z[1] - z[7])/2.0) / pow(res, 3);
+         C = ((-z[0] + z[2] - z[6] + z[8])/4.f + (z[1] - z[5])/2.0) / pow(res, 3);
+         D = ((z[3] + z[5])/2.f - z[4]) / pow(res, 2);
+         E = ((z[1] + z[7])/2.f - z[4]) / pow(res, 2);
+         F = (-z[0] + z[2] + z[6] - z[8]) / (4.0 * pow(res, 2));
+         G = (-z[3] + z[5]) / (2.0 * res);
+         H = (z[1] - z[7]) / (2.0 * res);
+         I = z[4];
       }
 
       double slope() {
-         return atan(sqrt(G*G + H*H));
+         return proj_todeg(atan(sqrt(G*G + H*H)));
       }
 
       double hillshade(double azimuth = M_7_PI_4, double height = M_PI_4, double zFactor = 1.0) {
@@ -434,12 +418,12 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
    double scale = 1.0;
 
    if (fixed) {
-      auto abs_compare = [](double a, double b){ return std::abs(a) < std::abs(b); };
+      auto abs_compare = [](const double& a, const double& b){ return std::abs(a) < std::abs(b); };
       double xmax = std::abs(*std::max_element(x.begin(), x.end(), abs_compare));
       double ymax = std::abs(*std::max_element(y.begin(), y.end(), abs_compare));
       int k2 = ksize / 2;
       scale = k2 * dims[0].delta / std::max(xmax, ymax);
-      cout << k2 << ' ' << dims[0].delta << ' ' << std::max(xmax, ymax) << ' ' << scale << endl;
+      // cout << ksize << ' ' << k2 << ' ' << dims[0].delta << ' ' << std::max(xmax, ymax) << ' ' << scale << endl;
    }
 
    x = x * scale + i * dims[0].delta + dims[0].offset;
@@ -493,7 +477,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       auto factors = get_factors(dims, CRS, curvilinear);
 
       auto coef = bilinear_coef(matrix);
-      double di, dj;
+      double di, dj, value;
 
       std::vector<double> values;
 
@@ -507,36 +491,46 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                nk = x.nrow();
                nl = x.ncol();
 
-               for (auto k = 0; k < nk; ++k) {
-                  for (auto l = 0; l < nl; ++l) {
+               for (auto l = 0; l < nl; ++l) {
+                  for (auto k = 0; k < nk; ++k) {
 
                      di = (x(k, l) - dims[0].offset) / dims[0].delta;
                      dj = (y(k, l) - dims[1].offset) / dims[1].delta;
 
-                     cout << di << ' ' << dj << endl;
+                     // cout << di << ' ' << dj;
 
                      if (di >= 0 and dj >= 0 and di < ni and dj < nj) {
                         idi = floor(di);
                         idj = floor(dj);
 
                         if (is_bilinear(idi, idj) == 1) {
-                           values.push_back(interpolate_ij(coef, di, dj));
+                           value = interpolate_ij(coef, di, dj);
+                           // cout << " -> " << value << endl;
+                           values.push_back(value);
+                        } else {
+                           // cout << " -> NOT BILINEAR " << endl;
                         }
+                     } else {
+                        // cout << " -> OUT OF RANGE " << endl;
                      }
                   }
                }
 
-               cout << endl;
+               // cout << endl;
 
-               if (double n = values.size(); n > 0) {
+               if (double n = values.size(); (n > 0) and not (fixed and n < pow(ksize, 2))) {
+                  int w = 1;
                   for (auto stat : stats) {
+                     cout << w++;
                      if (stat == "mean") {
                         res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n;
                      } else if (stat == "slope") {
-                        auto surf = ZevenbergenSurface(matrix, dims, coef, x, y, scale);
+                        auto surf = ZevenbergenSurface(values, scale * dims[0].delta);
                         res(i, j) = surf.slope();
+                        cout << " -> " << res(i, j) << endl;
+                        // surf.print_elevations();
                      } else if (stat == "hill") {
-                        auto surf = ZevenbergenSurface(matrix, dims, coef, x, y, scale);
+                        auto surf = ZevenbergenSurface(values, scale * dims[0].delta);
                         res(i, j) = surf.hillshade();
                      } else {
                         res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n; // use mean by default
@@ -548,7 +542,6 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                }
 
                values.clear();
-
             }
          }
       }
