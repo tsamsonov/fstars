@@ -379,6 +379,7 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
    double lambdaScale = ksize * pf[idx].meridional_scale / nk;
    double phiScale = ksize * pf[idx].parallel_scale / nl;
    double parallel_convergence = atan2(pf[idx].dy_dlam, pf[idx].dx_dlam);
+   double theta = (pf[idx].meridian_convergence - parallel_convergence > 0) ? M_PI - pf[idx].meridian_parallel_angle : pf[idx].meridian_parallel_angle;
    auto nrow = ishift.nrow();
    auto ncol = ishift.ncol();
 
@@ -403,10 +404,10 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
          } else {
             D = sqrt(pow(di * dims[0].delta, 2) + pow(dj * dims[1].delta, 2));
             A = east_to_geo(atan2(dj * dims[1].delta, di * dims[0].delta));
-            a = to_closest(north_to_geo(atan(phiScale * sin(pf[idx].meridian_parallel_angle) * tan(A) /
-                           (lambdaScale + phiScale * cos(pf[idx].meridian_parallel_angle) * tan(A)))), A);
+            a = to_closest(north_to_geo(atan(phiScale * sin(theta) * tan(A) /
+                           (lambdaScale + phiScale * cos(theta) * tan(A)))), A);
             mu = sqrt(pow(lambdaScale, 2) * pow(cos(A), 2) +
-                      lambdaScale * phiScale * cos(pf[idx].meridian_parallel_angle) * sin(2 * A) +
+                      lambdaScale * phiScale * cos(theta) * sin(2 * A) +
                       pow(phiScale, 2) * pow(sin(A), 2));
 
             x(k, l) = D * mu * sin(a - pf[idx].meridian_convergence);
@@ -586,7 +587,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       }
    }
 
-   cout << ni << ' ' << nj << endl;
+   // cout << ni << ' ' << nj << endl;
 
    return res;
 }

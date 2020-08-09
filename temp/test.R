@@ -8,14 +8,14 @@ data(land, package = 'tmap')
 
 # box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
 # box = st_bbox(c(xmin = 5, xmax = 13, ymin = 43.5, ymax = 48), crs = st_crs(land))
-box = st_bbox(c(xmin = -20, xmax = 140, ymin = -35, ymax = 70), crs = st_crs(land))
+# box = st_bbox(c(xmin = 85, xmax = 110, ymin = 55, ymax = 75), crs = st_crs(land))
 
-# box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
+box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 
 cland = land %>%
   st_crop(box)
 
-prj = '+proj=merc'
+prj = '+proj=goode'
 
 clandp = cland %>%
   st_warp(crs = prj)
@@ -27,7 +27,7 @@ fct = get_factors(clandp)
 
 # f0 = st_convolve(clandp['elevation'], size = 9)
 # f1 = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
-f1 = st_convolve(clandp['elevation'], size = 5)
+f1 = st_convolve(clandp['elevation'], size = 3)
 f1a = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
 f1s = st_convolve(f1, 'hill', adaptive = TRUE)
 f1as = st_convolve(f1a, 'hill', adaptive = TRUE)
@@ -42,7 +42,7 @@ plot(f1as)
 # View(f1a[[1]])
 
 
-# write_stars(f1, 'temp/filtered.tif')
+# write_stars(f1a, 'temp/filtered.tif')
 
 # f1s = st_convolve(f1, 'slope', adaptive = TRUE)
 
