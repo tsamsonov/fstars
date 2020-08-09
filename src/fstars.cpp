@@ -62,10 +62,10 @@ Bilinear bilinear_coef(const Rcpp::NumericMatrix&  matrix) {
 
    for (auto i = 0; i < ni-1; ++i) {
       for (auto j = 0; j < nj-1; ++j) {
-         z00 = matrix(i,   j+1);
-         z10 = matrix(i+1, j+1);
-         z01 = matrix(i,   j);
-         z11 = matrix(i+1, j);
+         z00 = matrix(i,   j);
+         z10 = matrix(i+1, j);
+         z01 = matrix(i,   j+1);
+         z11 = matrix(i+1, j+1);
          coef.a00(i, j) = z00;
          coef.a10(i, j) = z10 - z00;
          coef.a01(i, j) = z01 - z00;
@@ -371,8 +371,8 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
 
    auto idx = j * (dims[0].to - dims[0].from + 1) + i;
 
-   int nk = fixed ? ksize : 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
-   int nl = fixed ? ksize : 2 * ceil(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
+   int nk = fixed ? ksize : 2 * floor(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
+   int nl = fixed ? ksize : 2 * floor(ksize * pf[idx].tissot_semimajor / 2.0) + 1;
 
    auto [ishift, jshift] = get_shifts(nk);
 
@@ -426,6 +426,12 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
       // cout << ksize << ' ' << k2 << ' ' << dims[0].delta << ' ' << std::max(xmax, ymax) << ' ' << scale << endl;
    }
 
+   // for (auto k = 0; k < nrow; ++k) {
+   //    for (auto l = 0; l < ncol; ++l) {
+   //       x(k,l) = (i + ishift(k, l)) * dims[0].delta + dims[0].offset;
+   //       y(k,l) = (j + jshift(k, l)) * dims[1].delta + dims[1].offset;
+   //    }
+   // }
    x = x * scale + i * dims[0].delta + dims[0].offset;
    y = y * scale + j * dims[1].delta + dims[1].offset;
 
@@ -484,12 +490,16 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       for (auto i = 0; i < ni; ++i) {
          for (auto j = 0; j < nj; ++j) {
             if (nodata(i, j) == 1) {
+            // if(i != 18 or j != 3) {
                res(i, j) = NA_REAL;
+               // cout << i << ' ' << j << " -> " << "NO DATA" << endl << endl;
             } else {
                auto [x, y, scale] = get_xy_kernel(i, j, ksize, dims, factors, fixed);
 
                nk = x.nrow();
                nl = x.ncol();
+
+               // cout << "SIZE: " << nk << endl;
 
                for (auto l = 0; l < nl; ++l) {
                   for (auto k = 0; k < nk; ++k) {
@@ -499,13 +509,13 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
 
                      // cout << di << ' ' << dj;
 
-                     if (di >= 0 and dj >= 0 and di < ni and dj < nj) {
+                     if (di >= 0 and dj >= 0 and di <= ni-1 and dj <= nj-1) {
                         idi = floor(di);
                         idj = floor(dj);
 
                         if (is_bilinear(idi, idj) == 1) {
                            value = interpolate_ij(coef, di, dj);
-                           // cout << " -> " << value << endl;
+                           // cout << "(" << idi << ' ' << idj << ") -> " << value << endl;
                            values.push_back(value);
                         } else {
                            // cout << " -> NOT BILINEAR " << endl;
@@ -516,18 +526,20 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                   }
                }
 
-               // cout << endl;
-
                if (double n = values.size(); (n > 0) and not (fixed and n < pow(ksize, 2))) {
-                  int w = 1;
                   for (auto stat : stats) {
-                     cout << w++;
                      if (stat == "mean") {
                         res(i, j) = std::accumulate(values.begin(), values.end(), 0) / n;
                      } else if (stat == "slope") {
                         auto surf = ZevenbergenSurface(values, scale * dims[0].delta);
                         res(i, j) = surf.slope();
-                        cout << " -> " << res(i, j) << endl;
+                        // res(i, j) = *std::max_element(values.begin(), values.end()) - *std::min_element(values.begin(), values.end());
+
+                        // double G = (-values[3] + values[5]) / (2.0 * scale * dims[0].delta);
+                        // double H = (values[1] - values[7]) / (2.0 * scale * dims[0].delta);
+                        // res(i, j) = proj_todeg(atan(sqrt(G*G + H*H)));
+
+                        // cout << " -> " << res(i, j) << endl;
                         // surf.print_elevations();
                      } else if (stat == "hill") {
                         auto surf = ZevenbergenSurface(values, scale * dims[0].delta);
@@ -543,6 +555,8 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
 
                values.clear();
             }
+
+            // cout << "-------------------------------------" << endl << endl;
          }
       }
    } else {
@@ -571,6 +585,8 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
          }
       }
    }
+
+   cout << ni << ' ' << nj << endl;
 
    return res;
 }

@@ -6,16 +6,16 @@ library(mapview)
 
 data(land, package = 'tmap')
 
-box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
-# box = st_bbox(c(xmin = -70, xmax = --10, ymin = 75, ymax = 84), crs = st_crs(land))
-# box = st_bbox(c(xmin = -20, xmax = 140, ymin = -35, ymax = 70), crs = st_crs(land))
+# box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
+# box = st_bbox(c(xmin = 5, xmax = 13, ymin = 43.5, ymax = 48), crs = st_crs(land))
+box = st_bbox(c(xmin = -20, xmax = 140, ymin = -35, ymax = 70), crs = st_crs(land))
 
 # box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 
 cland = land %>%
   st_crop(box)
 
-prj = '+proj=moll'
+prj = '+proj=merc'
 
 clandp = cland %>%
   st_warp(crs = prj)
@@ -25,25 +25,44 @@ clandp = cland %>%
 
 fct = get_factors(clandp)
 
-f0 = st_convolve(clandp['elevation'], size = 9)
-f1 = st_convolve(clandp['elevation'], size = 9, adaptive = TRUE)
+# f0 = st_convolve(clandp['elevation'], size = 9)
+# f1 = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
+f1 = st_convolve(clandp['elevation'], size = 5)
+f1a = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
+f1s = st_convolve(f1, 'hill', adaptive = TRUE)
+f1as = st_convolve(f1a, 'hill', adaptive = TRUE)
+
+plot(f1)
+plot(f1a)
+plot(f1s)
+plot(f1as)
+
+# View(clandp[['elevation']])
+# View(f1[[1]])
+# View(f1a[[1]])
+
 
 # write_stars(f1, 'temp/filtered.tif')
 
 # f1s = st_convolve(f1, 'slope', adaptive = TRUE)
 
 
-f0s = st_convolve(f0, 'slope', adaptive = TRUE)
+
 # f0h = st_convolve(f0, 'hill', adaptive = TRUE)
-# write_stars(f0s, 'temp/slope.tif')
+# write_stars(f1s, 'temp/slope.tif')
 
 
-plot(clandp['elevation'])
-plot(f0)
-plot(f0s)
-# plot(f0h)
-plot(f1)
+# plot(f1)
+# plot(f0)
 # plot(f1s)
+# plot(f0h)
+# plot(f1)
+# plot(f1s)
+
+
+#
+# mapview(clandp['elevation']) + mapview(f1) + mapview(f1a) + mapview(f1a - f1)
+# mapview(f1) + mapview(f1a)
 
 
 # plot(f1)

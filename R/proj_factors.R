@@ -59,8 +59,8 @@ st_convolve <- function(s, stats = 'mean', size = 3, adaptive = FALSE) {
 
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
   attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
-  attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset + attr(s, "dimensions")[[1]]$delta * size %/% 2
-  attr(res, "dimensions")[[2]]$offset = attr(s, "dimensions")[[2]]$offset + attr(s, "dimensions")[[2]]$delta * size %/% 2
+  attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset
+  attr(res, "dimensions")[[2]]$offset = attr(s, "dimensions")[[2]]$offset
   attr(res, "dimensions")[[1]]$refsys = attr(s, "dimensions")[[1]]$refsys
   attr(res, "dimensions")[[2]]$refsys = attr(s, "dimensions")[[2]]$refsys
   set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
