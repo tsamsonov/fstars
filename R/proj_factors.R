@@ -37,24 +37,52 @@ get_factors <- function(s) {
            dy_dphi = pf[['dy_dphi']])
 }
 
-#' Filter stars object with selected kernel
+#' Calculate statistics using floating window
 #'
 #' @param s a raster stars object
-#' @param stats string (name of the filter), matrix (with values)
-#' @param size
+#' @param stats a vector of stats names
+#' @param size a size of the kernel. 3 by defaulr
+#' @param adaptive should a kernel be adaptive to map projection distorions?
 #'
-#' @return matrix
+#' @return a stars object
 #' @export
 #'
 #' @examples
 st_convolve <- function(s, stats = 'mean', size = 3, adaptive = FALSE) {
   krnl = matrix(rep(size^-2, size^2), nrow = size)
 
-  fixed = ifelse(stats %in% c('slope', 'aspect', 'planc', 'profc', 'hill'), TRUE, FALSE);
-
   res = rcpp_filter_matrix(s[[1]], attr(s, "dimensions"), st_crs(s)$proj4string, size, stats,
                            attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
-                           adaptive, fixed) %>%
+                           adaptive, FALSE) %>%
+    st_as_stars()
+
+  attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
+  attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
+  attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset
+  attr(res, "dimensions")[[2]]$offset = attr(s, "dimensions")[[2]]$offset
+  attr(res, "dimensions")[[1]]$refsys = attr(s, "dimensions")[[1]]$refsys
+  attr(res, "dimensions")[[2]]$refsys = attr(s, "dimensions")[[2]]$refsys
+  set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
+
+  return(res)
+}
+
+#' Calculate surface derivatives
+#'
+#' @param s a raster stars object
+#' @param stats a vector of derivatives names
+#' @param method surface fitting method. Currentlyr EVANS, ZEVENBERGEN and FLORINSKY methods are supported. ZEVENBERGEN is used by default
+#' @param adaptive should a kernel be adaptive to map projection distorions?
+#'
+#' @return a stars object
+#' @export
+#'
+#' @examples
+st_deriv <- function(s, stats = 'slope', method = 'ZEVENBERGEN', adaptive = FALSE) {
+
+  res = rcpp_filter_matrix(s[[1]], attr(s, "dimensions"), st_crs(s)$proj4string, 3, stats,
+                           attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
+                           adaptive && (method != "FLORINSKY"), TRUE, method) %>%
     st_as_stars()
 
   attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta

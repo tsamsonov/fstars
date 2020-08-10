@@ -9,8 +9,8 @@ rcpp_get_factors <- function(dimensions, CRS, curvilinear = FALSE) {
     .Call('_fstars_rcpp_get_factors', PACKAGE = 'fstars', dimensions, CRS, curvilinear)
 }
 
-rcpp_filter_matrix <- function(matrix, dimensions, CRS, ksize, stats, curvilinear = FALSE, adaptive = FALSE, fixed = FALSE) {
-    .Call('_fstars_rcpp_filter_matrix', PACKAGE = 'fstars', matrix, dimensions, CRS, ksize, stats, curvilinear, adaptive, fixed)
+rcpp_filter_matrix <- function(matrix, dimensions, CRS, ksize, stats, curvilinear = FALSE, adaptive = FALSE, fixed = FALSE, type = "ZEVENBERGEN") {
+    .Call('_fstars_rcpp_filter_matrix', PACKAGE = 'fstars', matrix, dimensions, CRS, ksize, stats, curvilinear, adaptive, fixed, type)
 }
 
 test_proj <- function() {

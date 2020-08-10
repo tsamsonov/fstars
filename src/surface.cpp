@@ -1,5 +1,6 @@
 #include <vector>
 #include <cmath>
+#include <iostream>
 #include <proj.h>
 
 const double M_7_PI_4 = 7 * M_PI_4;
@@ -9,8 +10,19 @@ using namespace std;
 enum SurfaceType {
   EVANS,
   ZEVENBERGEN,
-  FLORINSKY
+  FLORINSKY,
+  UNKNOWN
 };
+
+static SurfaceType to_surface_type(const char* type) {
+  if (strncmp(type, "ZEVENBERGEN", 11) == 0)
+    return ZEVENBERGEN;
+  else if (strncmp(type, "EVANS", 5) == 0)
+    return EVANS;
+  else if (strncmp(type, "FLORINSKY", 9) == 0)
+    return FLORINSKY;
+  else return UNKNOWN;
+}
 
 class Surface {
 
@@ -18,8 +30,9 @@ class Surface {
   SurfaceType type;
 
 public:
-  Surface(const vector<double>& z, const double& res, SurfaceType type = ZEVENBERGEN,
-          const double& phi = 0, const double& lam = 0, PJ *P = nullptr) {
+  Surface(const vector<double>& z, const double& res, SurfaceType stype = ZEVENBERGEN,
+          const double& phi = 0, const double& lam = 0, PJ *P = nullptr, bool warn = false) {
+    type = stype;
     switch(type) {
     case EVANS:
       D = (z[0] + z[2] + z[3] + z[5] + z[6] + z[8] - 2 * (z[1] + z[5] + z[7])) / (3 * pow(res, 2));
@@ -29,6 +42,7 @@ public:
       H = (z[0] + z[1] + z[2] - z[6] - z[7] - z[8]) / (6 * res);
       I = z[4];
       break;
+    case UNKNOWN:
     case ZEVENBERGEN:
       A = ((z[0] + z[2] + z[6] + z[8])/4.f - (z[1] + z[3] + z[5] + z[7])/2.f + z[4]) / pow(res, 4);
       B = ((z[0] + z[2] - z[6] - z[8])/4.f - (z[1] - z[7])/2.0) / pow(res, 3);
@@ -43,35 +57,51 @@ public:
     case FLORINSKY:
       PJ_COORD p1, p2;
 
-      p1.lp.lam = lam - res;
-      p1.lp.phi = phi - res;
-      p2.lp.lam = lam;
-      p2.lp.phi = phi - res;
+      p1.lpz.lam = lam - res;
+      p1.lpz.phi = phi - res;
+      p2.lpz.lam = lam;
+      p2.lpz.phi = phi - res;
       double a = proj_lp_dist(P, p1, p2);
+      if (warn)
+        cout << p1.lpz.lam << ' ' << p1.lpz.phi << ' ' << p2.lpz.lam << ' ' << p2.lpz.phi << ' -> ' << a << endl;
 
-      p1.lp.lam = lam - res;
-      p1.lp.phi = phi;
-      p2.lp.lam = lam;
-      p2.lp.phi = phi;
+      p1.lpz.lam = lam - res;
+      p1.lpz.phi = phi;
+      p2.lpz.lam = lam;
+      p2.lpz.phi = phi;
       double b = proj_lp_dist(P, p1, p2);
+      if (warn)
+        cout << p1.lpz.lam << ' ' << p1.lpz.phi << ' ' << p2.lpz.lam << ' ' << p2.lpz.phi << ' -> ' << b << endl;
 
-      p1.lp.lam = lam - res;
-      p1.lp.phi = phi + res;
-      p2.lp.lam = lam;
-      p2.lp.phi = phi + res;
+      p1.lpz.lam = lam - res;
+      p1.lpz.phi = phi + res;
+      p2.lpz.lam = lam;
+      p2.lpz.phi = phi + res;
       double c = proj_lp_dist(P, p1, p2);
+      if (warn)
+        cout << p1.lpz.lam << ' ' << p1.lpz.phi << ' ' << p2.lpz.lam << ' ' << p2.lpz.phi << ' -> ' << c << endl;
 
-      p1.lp.lam = lam - res;
-      p1.lp.phi = phi - res;
-      p2.lp.lam = lam - res;
-      p2.lp.phi = phi;
+      p1.lpz.lam = lam - res;
+      p1.lpz.phi = phi - res;
+      p2.lpz.lam = lam - res;
+      p2.lpz.phi = phi;
       double d = proj_lp_dist(P, p1, p2);
+      if (warn)
+        cout << p1.lpz.lam << ' ' << p1.lpz.phi << ' ' << p2.lpz.lam << ' ' << p2.lpz.phi << ' -> ' << d << endl;
 
-      p1.lp.lam = lam - res;
-      p1.lp.phi = phi;
-      p2.lp.lam = lam - res;
-      p2.lp.phi = phi + res;
+      p1.lpz.lam = lam - res;
+      p1.lpz.phi = phi;
+      p2.lpz.lam = lam - res;
+      p2.lpz.phi = phi + res;
       double e = proj_lp_dist(P, p1, p2);
+      if (warn)
+        cout << p1.lpz.lam << ' ' << p1.lpz.phi << ' ' << p2.lpz.lam << ' ' << p2.lpz.phi << ' -> ' << e << endl;
+
+      // if (warn)
+      //   cout << a << ' ' << b << ' ' << c << ' ' << d << ' ' << e << endl;
+
+      // double a, b, c, d, e;
+      // a = b = c = d = e = 1;
 
       double a2 = a * a;
       double b2 = b * b;
@@ -100,6 +130,7 @@ public:
 
       H = (CC - DD - EE + FF + GG - HH) / II;
 
+      break;
     }
   }
 
@@ -143,5 +174,4 @@ public:
   double planc() {
     return 2 * (D*H*H + E*G*G - F*G*H) / (G*G + H*H);
   }
-
 };

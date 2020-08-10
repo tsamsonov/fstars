@@ -15,9 +15,9 @@ box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(la
 cland = land %>%
   st_crop(box)
 
-prj = '+proj=goode'
+prj = '+proj=eqc'
 
-clandp = cland %>%
+landp = land %>%
   st_warp(crs = prj)
 
 # landp = land %>%
@@ -27,21 +27,39 @@ fct = get_factors(clandp)
 
 # f0 = st_convolve(clandp['elevation'], size = 9)
 # f1 = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
-f1 = st_convolve(clandp['elevation'], 'mean', size = 7)
-f1a = st_convolve(clandp['elevation'], 'mean', size = 7, adaptive = TRUE)
-f1s = st_convolve(f1, 'aspect')
-f1as = st_convolve(f1a, 'aspect', adaptive = TRUE)
 
-plot(f1)
-plot(f1a)
-plot(f1s)
-plot(f1as)
+f0f = st_deriv(land['elevation'], 'slope', method = "FLORINSKY")
+f0e = st_deriv(landp['elevation'], 'slope', method = "EVANS")
+f0z = st_deriv(landp['elevation'], 'slope', method = "ZEVENBERGEN")
+f0ea = st_deriv(landp['elevation'], 'slope', method = "EVANS", adaptive = TRUE)
+f0za = st_deriv(landp['elevation'], 'slope', method = "ZEVENBERGEN", adaptive = TRUE)
 
-write_stars(f1, 'temp/filtered.tif')
-write_stars(f1a, 'temp/filtered_a.tif')
+# f1 = st_convolve(clandp['elevation'], 'mean', size = 7)
+# f1a = st_convolve(clandp['elevation'], 'mean', size = 7, adaptive = TRUE)
+# f1s = st_deriv(f1, 'aspect')
+# f1as = st_deriv(cland, 'aspect', adaptive = TRUE)
 
-write_stars(f1s, 'temp/aspect.tif')
-write_stars(f1as, 'temp/aspect_a.tif')
+plot(cland['elevation'])
+plot(f0f)
+plot(f0e)
+plot(f0z)
+plot(f0ea)
+plot(f0za)
+
+write_stars(f0f,  'temp/slope_flor.tif')
+write_stars(f0za, 'temp/slope_zeven.tif')
+
+# mapview(f0f)
+# plot(f1)
+# plot(f1a)
+# plot(f1s)
+# plot(f1as)
+
+# write_stars(f1, 'temp/filtered.tif')
+# write_stars(f1a, 'temp/filtered_a.tif')
+#
+# write_stars(f1s, 'temp/aspect.tif')
+# write_stars(f1as, 'temp/aspect_a.tif')
 
 # View(clandp[['elevation']])
 # View(f1[[1]])

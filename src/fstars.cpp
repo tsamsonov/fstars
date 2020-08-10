@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <thread>
-#include "zevenbergen.cpp"
+#include "surface.cpp"
 
 using namespace std;
 
@@ -16,6 +16,7 @@ enum Method {
    AFFINE,
    TRAPEZOIDAL
 };
+
 
 union Values {
    Rcpp::NumericVector rect; // rectilinear raster
@@ -28,7 +29,7 @@ struct Dimension {
    double offset;
    double delta;
    const char* refsys;
-   bool point;
+   // bool point;
 
    Dimension(const Rcpp::List& dim) {
       from = dim["from"];
@@ -36,7 +37,7 @@ struct Dimension {
       offset = dim["offset"];
       delta = dim["delta"];
       refsys = dim["refsys"];
-      point = dim["point"];
+      // point = dim["point"];
       // values.curv = Rcpp::as<Rcpp::NumericMatrix>(dim["values"]);
    }
 };
@@ -390,7 +391,7 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
    return std::tuple(x, y, scale);
 }
 
-double get_stat(const std::vector<double>& values, const std::string& stat, const double& res) {
+double get_stat(const std::vector<double>& values, const std::string& stat) {
    int n = values.size();
    if (stat == "mean") {
       return std::accumulate(values.begin(), values.end(), 0) / n;
@@ -410,23 +411,34 @@ double get_stat(const std::vector<double>& values, const std::string& stat, cons
       return *std::max_element(values.begin(), values.end());
    } else if (stat == "range") {
       return *std::max_element(values.begin(), values.end()) - *std::min_element(values.begin(), values.end());
-   } else if (stat == "slope") {
-      auto surf = ZevenbergenSurface(values, res);
-      return surf.slope();
-   } else if (stat == "aspect") {
-      auto surf = ZevenbergenSurface(values, res);
-      return surf.aspect();
-   } else if (stat == "hill") {
-      auto surf = ZevenbergenSurface(values, res);
-      return surf.hillshade();
-   } else if (stat == "planc") {
-      auto surf = ZevenbergenSurface(values, res);
-      return surf.planc();
-   } else if (stat == "profc") {
-      auto surf = ZevenbergenSurface(values, res);
-      return surf.profc();
    } else {
       return std::accumulate(values.begin(), values.end(), 0) / n; // use mean by default
+   }
+}
+
+double is_stat(const std::string& stat) {
+   auto stats = {"mean", "sd", "median", "min", "max", "range"};
+   return std::find(stats.begin(), stats.end(), stat) != stats.end();
+}
+
+double is_deriv(const std::string& stat) {
+   auto stats = {"slope", "aspect", "hill", "planc", "profc"};
+   return std::find(stats.begin(), stats.end(), stat) != stats.end();
+}
+
+double get_deriv(const std::vector<double>& values, const std::string& stat, const double& res,
+                 const SurfaceType& type = ZEVENBERGEN, const double& phi = 0, const double& lam = 0, PJ *P = nullptr, bool warn = false) {
+   auto surf = Surface(values, res, type, phi, lam, P, warn);
+   if (stat == "slope") {
+      return surf.slope();
+   } else if (stat == "aspect") {
+      return surf.aspect();
+   } else if (stat == "hill") {
+      return surf.hillshade();
+   } else if (stat == "planc") {
+      return surf.planc();
+   } else if (stat == "profc") {
+      return surf.profc();
    }
 }
 
@@ -438,7 +450,9 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                                        const std::vector<std::string>& stats,
                                        const bool& curvilinear = false,
                                        const bool& adaptive = false,
-                                       const bool& fixed = false) {
+                                       const bool& fixed = false,
+                                       const char* type = "ZEVENBERGEN") {
+
    int ni = matrix.nrow();
    int nj = matrix.ncol();
 
@@ -457,6 +471,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       for (auto j = 0; j < nj; ++j)
          nodata(i, j) = to_string(matrix(i, j)) == "nan";
 
+
    Rcpp::NumericMatrix is_bilinear(ni, nj);
    for (auto i = 0; i < ni-1; ++i)
       for (auto j = 0; j < nj-1; ++j)
@@ -469,6 +484,11 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
 
    Rcpp::NumericMatrix res(ni, nj);
    int ikl, jkl, idi, idj;
+   SurfaceType stype = to_surface_type(type);
+
+   const char *prj = CRS.c_str();
+   PJ_CONTEXT *C = PJ_DEFAULT_CTX;
+   PJ* P = proj_create(C, prj);
 
    if (adaptive) {
 
@@ -508,7 +528,18 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
 
                if ((values.size() > 0) and not (fixed and (values.size() < pow(ksize, 2)))) {
                   for (auto stat : stats) {
-                     res(i, j) = get_stat(values, stat, scale * dims[0].delta);
+                     if (is_stat(stat)) {
+                        res(i, j) = get_stat(values, stat);
+                     } else {
+                        if (stype == FLORINSKY) {
+                           res(i, j) = get_deriv(values, stat, proj_torad(dims[0].delta), stype,
+                                                 proj_torad(j * dims[1].delta + dims[1].offset),
+                                                 proj_torad(i * dims[0].delta + dims[0].offset),
+                                                 P);
+                        } else {
+                           res(i, j) = get_deriv(values, stat, scale * dims[0].delta, stype);
+                        }
+                     }
                   }
                } else {
                   res(i, j) = NA_REAL;
@@ -540,7 +571,30 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
 
                if ((values.size() > 0) and not (fixed and (values.size() < pow(ksize, 2)))) {
                   for (auto stat : stats) {
-                     res(i, j) = get_stat(values, stat, dims[0].delta);
+                     if (is_stat(stat)) {
+                        res(i, j) = get_stat(values, stat);
+                     } else {
+                        if (stype == FLORINSKY) {
+                           bool warn = false;
+                           if(i == 420 and j == 36) {
+                              for (auto v: values)
+                                 cout << v << ' ';
+                              cout << endl << ' ' << dims[0].delta << ' ' << proj_torad(i * dims[0].delta + dims[0].offset) << ' ' << proj_torad(j * dims[1].delta + dims[1].offset) << endl;
+                              cout << res(i, j) << endl;
+                              warn = true;
+                           }
+
+                           res(i, j) = get_deriv(values, stat, proj_torad(dims[0].delta), stype,
+                                                 proj_torad(j * dims[1].delta + dims[1].offset),
+                                                 proj_torad(i * dims[0].delta + dims[0].offset),
+                                                 P, warn);
+                           warn = true;
+
+
+                        } else {
+                           res(i, j) = get_deriv(values, stat, dims[0].delta, stype);
+                        }
+                     }
                   }
                } else {
                   res(i, j) = NA_REAL;

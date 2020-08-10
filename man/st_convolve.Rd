@@ -2,20 +2,22 @@
 % Please edit documentation in R/proj_factors.R
 \name{st_convolve}
 \alias{st_convolve}
-\title{Filter stars object with selected kernel}
+\title{Calculate statistics using floating window}
 \usage{
 st_convolve(s, stats = "mean", size = 3, adaptive = FALSE)
 }
 \arguments{
 \item{s}{a raster stars object}
 
-\item{stats}{string (name of the filter), matrix (with values)}
+\item{stats}{a vector of stats names}
 
-\item{size}{}
+\item{size}{a size of the kernel. 3 by defaulr}
+
+\item{adaptive}{should a kernel be adaptive to map projection distorions?}
 }
 \value{
-matrix
+a stars object
 }
 \description{
-Filter stars object with selected kernel
+Calculate statistics using floating window
 }
