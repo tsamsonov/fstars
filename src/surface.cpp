@@ -122,7 +122,7 @@ public:
 
       double CC =  (z[0] + z[2]) * (d2 * (a4 + b4 + b2 * c2) + c2 * e2 * (a2 - b2));
       double DD =  (z[3] + z[5]) * (d2 * (a4 + c4 + b2 * c2) - e2 * (a4 + c4 + a2 * b2));
-      double EE =  (z[6] + z[9]) * (e2 * (b4 + c4 + a2 * b2) - a2 * d2 * (b2 - c2));
+      double EE =  (z[6] + z[8]) * (e2 * (b4 + c4 + a2 * b2) - a2 * d2 * (b2 - c2));
       double FF = ((z[1] - z[4]) * (a4 - 2 * b2 * c2) + (3 * z[1] - z[4]) * c4 + (z[1] - 3 * z[4]) * b4) * d2;
       double GG = ((z[4] - z[7]) * (c4 - 2 * a2 * b2) + (3 * z[4] - z[7]) * b4 + (z[4] - 3 * z[7]) * a4) * e2;
       double HH = (z[1] * c2 * e2 * (a2 - b2) + z[7] * a2 * d2* (b2 - c2)) * 2;

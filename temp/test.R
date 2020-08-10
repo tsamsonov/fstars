@@ -48,6 +48,7 @@ plot(f0za)
 
 write_stars(f0f,  'temp/slope_flor.tif')
 write_stars(f0za, 'temp/slope_zeven.tif')
+write_stars(f0ea, 'temp/slope_evans.tif')
 
 # mapview(f0f)
 # plot(f1)
