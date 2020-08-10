@@ -27,22 +27,25 @@ fct = get_factors(clandp)
 
 # f0 = st_convolve(clandp['elevation'], size = 9)
 # f1 = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
-f1 = st_convolve(clandp['elevation'], 'sd', size = 7)
-f1a = st_convolve(clandp['elevation'], 'sd', size = 7, adaptive = TRUE)
-# f1s = st_convolve(f1, 'median', adaptive = TRUE)
-# f1as = st_convolve(f1a, 'median', adaptive = TRUE)
+f1 = st_convolve(clandp['elevation'], 'mean', size = 7)
+f1a = st_convolve(clandp['elevation'], 'mean', size = 7, adaptive = TRUE)
+f1s = st_convolve(f1, 'aspect')
+f1as = st_convolve(f1a, 'aspect', adaptive = TRUE)
 
 plot(f1)
 plot(f1a)
-# plot(f1s)
-# plot(f1as)
+plot(f1s)
+plot(f1as)
+
+write_stars(f1, 'temp/filtered.tif')
+write_stars(f1a, 'temp/filtered_a.tif')
+
+write_stars(f1s, 'temp/aspect.tif')
+write_stars(f1as, 'temp/aspect_a.tif')
 
 # View(clandp[['elevation']])
 # View(f1[[1]])
 # View(f1a[[1]])
-
-
-# write_stars(f1a, 'temp/filtered.tif')
 
 # f1s = st_convolve(f1, 'slope', adaptive = TRUE)
 

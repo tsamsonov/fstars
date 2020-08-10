@@ -7,7 +7,6 @@
 #include <stdexcept>
 #include <chrono>
 #include <thread>
-#include <proj.h>
 #include "zevenbergen.cpp"
 
 using namespace std;
