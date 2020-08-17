@@ -54,15 +54,10 @@ st_convolve <- function(s, stats = 'mean', size = 3, adaptive = FALSE) {
   res = rcpp_filter_matrix(s[[1]], attr(s, "dimensions"), st_crs(s)$proj4string, size, stats,
                            attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
                            adaptive, FALSE) %>%
-    st_as_stars()
+    st_as_stars() %>%
+    set_names(stats)
 
-  attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
-  attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
-  attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset
-  attr(res, "dimensions")[[2]]$offset = attr(s, "dimensions")[[2]]$offset
-  attr(res, "dimensions")[[1]]$refsys = attr(s, "dimensions")[[1]]$refsys
-  attr(res, "dimensions")[[2]]$refsys = attr(s, "dimensions")[[2]]$refsys
-  set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
+  attr(res) = attr(s)
 
   return(res)
 }
@@ -71,7 +66,7 @@ st_convolve <- function(s, stats = 'mean', size = 3, adaptive = FALSE) {
 #'
 #' @param s a raster stars object
 #' @param stats a vector of derivatives names
-#' @param method surface fitting method. Currentlyr EVANS, ZEVENBERGEN and FLORINSKY methods are supported. ZEVENBERGEN is used by default
+#' @param method surface fitting method. Currently EVANS, ZEVENBERGEN and FLORINSKY methods are supported. ZEVENBERGEN is used by default
 #' @param adaptive should a kernel be adaptive to map projection distorions?
 #'
 #' @return a stars object
@@ -83,15 +78,10 @@ st_deriv <- function(s, stats = 'slope', method = 'ZEVENBERGEN', adaptive = FALS
   res = rcpp_filter_matrix(s[[1]], attr(s, "dimensions"), st_crs(s)$proj4string, 3, stats,
                            attr(attr(s, "dimensions"), "raster")[["curvilinear"]],
                            adaptive && (method != "FLORINSKY"), TRUE, method) %>%
-    st_as_stars()
+    st_as_stars() %>%
+    set_names(stats)
 
-  attr(res, "dimensions")[[1]]$delta = attr(s, "dimensions")[[1]]$delta
-  attr(res, "dimensions")[[2]]$delta = attr(s, "dimensions")[[2]]$delta
-  attr(res, "dimensions")[[1]]$offset = attr(s, "dimensions")[[1]]$offset
-  attr(res, "dimensions")[[2]]$offset = attr(s, "dimensions")[[2]]$offset
-  attr(res, "dimensions")[[1]]$refsys = attr(s, "dimensions")[[1]]$refsys
-  attr(res, "dimensions")[[2]]$refsys = attr(s, "dimensions")[[2]]$refsys
-  set_names(attr(res, "dimensions"), names(attr(s, "dimensions")))
+  attr(res, "dimensions") = attr(s, "dimensions")
 
   return(res)
 }

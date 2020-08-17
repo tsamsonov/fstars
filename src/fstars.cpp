@@ -36,7 +36,7 @@ struct Dimension {
       to = dim["to"];
       offset = dim["offset"];
       delta = dim["delta"];
-      refsys = dim["refsys"];
+      refsys = TYPEOF(dim["refsys"]) == VECSXP ? Rcpp::as<Rcpp::List>(dim["refsys"])["wkt"] : dim["refsys"];
       // point = dim["point"];
       // values.curv = Rcpp::as<Rcpp::NumericMatrix>(dim["values"]);
    }
@@ -383,6 +383,7 @@ std::tuple<Rcpp::NumericMatrix, Rcpp::NumericMatrix, double> get_xy_kernel(const
       double ymax = std::abs(*std::max_element(y.begin(), y.end(), abs_compare));
       int k2 = ksize / 2;
       scale = k2 * dims[0].delta / std::max(xmax, ymax);
+      // cout << scale << endl;
    }
 
    x = x * scale + i * dims[0].delta + dims[0].offset;
@@ -471,7 +472,6 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
       for (auto j = 0; j < nj; ++j)
          nodata(i, j) = to_string(matrix(i, j)) == "nan";
 
-
    Rcpp::NumericMatrix is_bilinear(ni, nj);
    for (auto i = 0; i < ni-1; ++i)
       for (auto j = 0; j < nj-1; ++j)
@@ -531,14 +531,7 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                      if (is_stat(stat)) {
                         res(i, j) = get_stat(values, stat);
                      } else {
-                        if (stype == FLORINSKY) {
-                           res(i, j) = get_deriv(values, stat, proj_torad(dims[0].delta), stype,
-                                                 proj_torad(j * dims[1].delta + dims[1].offset),
-                                                 proj_torad(i * dims[0].delta + dims[0].offset),
-                                                 P);
-                        } else {
-                           res(i, j) = get_deriv(values, stat, scale * dims[0].delta, stype);
-                        }
+                        res(i, j) = get_deriv(values, stat, scale * dims[0].delta, stype);
                      }
                   }
                } else {
@@ -575,22 +568,10 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                         res(i, j) = get_stat(values, stat);
                      } else {
                         if (stype == FLORINSKY) {
-                           bool warn = false;
-                           if(i == 420 and j == 36) {
-                              for (auto v: values)
-                                 cout << v << ' ';
-                              cout << endl << ' ' << dims[0].delta << ' ' << proj_torad(i * dims[0].delta + dims[0].offset) << ' ' << proj_torad(j * dims[1].delta + dims[1].offset) << endl;
-                              cout << res(i, j) << endl;
-                              warn = true;
-                           }
-
                            res(i, j) = get_deriv(values, stat, proj_torad(dims[0].delta), stype,
                                                  proj_torad(j * dims[1].delta + dims[1].offset),
                                                  proj_torad(i * dims[0].delta + dims[0].offset),
-                                                 P, warn);
-                           warn = true;
-
-
+                                                 P);
                         } else {
                            res(i, j) = get_deriv(values, stat, dims[0].delta, stype);
                         }
@@ -599,12 +580,12 @@ Rcpp::NumericMatrix rcpp_filter_matrix(const Rcpp::NumericMatrix&  matrix,
                } else {
                   res(i, j) = NA_REAL;
                }
-
                values.clear();
             }
          }
       }
    }
+
 
    return res;
 }

@@ -4,35 +4,39 @@ library(tidyverse)
 library(classInt)
 library(mapview)
 
-data(land, package = 'tmap')
+# data(land, package = 'tmap')
 
-# box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
+land = read_stars('/Volumes/Data/Spatial/DEM/HYPSO/elevation/hypso5g.tif', proxy = TRUE) %>%
+  select(elevation = 1)
+
+box = st_bbox(c(xmin = -20, xmax = 60, ymin = 30, ymax = 70), crs = st_crs(land))
 # box = st_bbox(c(xmin = 5, xmax = 13, ymin = 43.5, ymax = 48), crs = st_crs(land))
 # box = st_bbox(c(xmin = 85, xmax = 110, ymin = 55, ymax = 75), crs = st_crs(land))
 
-box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
+# box = st_bbox(c(xmin = -160, xmax = 160, ymin = -60, ymax = 85), crs = st_crs(land))
 
 cland = land %>%
-  st_crop(box)
+  st_crop(box) %>%
+  st_as_stars()
 
-prj = '+proj=eqc'
-
-landp = land %>%
-  st_warp(crs = prj)
+prj = '+proj=merc'
 
 # landp = land %>%
-#   st_warp(crs = prj)
+  # st_warp(crs = prj)
 
-fct = get_factors(clandp)
+clandp = cland %>%
+  st_warp(crs = prj)
+
+# fct = get_factors(cland)
 
 # f0 = st_convolve(clandp['elevation'], size = 9)
 # f1 = st_convolve(clandp['elevation'], size = 3, adaptive = TRUE)
 
-f0f = st_deriv(land['elevation'], 'slope', method = "FLORINSKY")
-f0e = st_deriv(landp['elevation'], 'slope', method = "EVANS")
-f0z = st_deriv(landp['elevation'], 'slope', method = "ZEVENBERGEN")
-f0ea = st_deriv(landp['elevation'], 'slope', method = "EVANS", adaptive = TRUE)
-f0za = st_deriv(landp['elevation'], 'slope', method = "ZEVENBERGEN", adaptive = TRUE)
+f0f = st_deriv(cland['elevation'], 'slope', method = "FLORINSKY")
+f0e = st_deriv(clandp['elevation'], 'slope', method = "EVANS")
+f0z = st_deriv(clandp['elevation'], 'slope', method = "ZEVENBERGEN")
+f0ea = st_deriv(clandp['elevation'], 'slope', method = "EVANS", adaptive = TRUE)
+f0za = st_deriv(clandp['elevation'], 'slope', method = "ZEVENBERGEN", adaptive = TRUE)
 
 # f1 = st_convolve(clandp['elevation'], 'mean', size = 7)
 # f1a = st_convolve(clandp['elevation'], 'mean', size = 7, adaptive = TRUE)
@@ -46,6 +50,8 @@ plot(f0z)
 plot(f0ea)
 plot(f0za)
 
+write_stars(cland, 'temp/cland.tif')
+write_stars(clandp, 'temp/clandp.tif')
 write_stars(f0f,  'temp/slope_flor.tif')
 write_stars(f0za, 'temp/slope_zeven.tif')
 write_stars(f0ea, 'temp/slope_evans.tif')
